@@ -1,3 +1,26 @@
+--// Library Setup (Add this at the beginning)
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+
+--// Create Window
+local Window = Library:CreateWindow({
+    Title = 'ESP Script',
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2
+})
+
+--// Create Tab
+local Tabs = {
+    Main = Window:AddTab('ESP')
+}
+
+--// Create Groupbox
+local LeftGroupBox = Tabs.Main:AddLeftGroupbox('ESP Settings')
+
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -33,14 +56,14 @@ local function createEsp(player)
     if player == LocalPlayer or espCache[player] then return end
     local drawings = {}
     drawings.box = newDrawing("Square")
-    drawings.box.Thickness = 0.4
+    drawings.box.Thickness = 1
     drawings.box.Filled = false
     drawings.box.Color = settings.defaultcolor
     drawings.box.Visible = false
     drawings.box.ZIndex = 2
 
     drawings.boxoutline = newDrawing("Square")
-    drawings.boxoutline.Thickness = 0
+    drawings.boxoutline.Thickness = 3
     drawings.boxoutline.Filled = false
     drawings.boxoutline.Color = newColor3()
     drawings.boxoutline.Visible = false
@@ -65,26 +88,28 @@ local function destroyAllEsp()
         for _, drawing in pairs(drawings) do
             drawing:Remove()
         end
-        espCache[player] = nil
     end
+    espCache = {}
 end
 
 --// Update ESP
 local function updateEsp(player, drawings)
     local character = player.Character
-    if character and character:GetModelCFrame() then
-        local cframe = character:GetModelCFrame()
-        local position, visible, depth = wtvp(cframe.Position)
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    
+    if humanoidRootPart and humanoid and humanoid.Health > 0 then
+        local position, visible, depth = wtvp(humanoidRootPart.Position)
         drawings.box.Visible = visible
         drawings.boxoutline.Visible = visible
 
         if visible then
             local scale = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
-            local width, height = round(4*scale, 5*scale)
+            local width, height = round(4 * scale, 5 * scale)
             local x, y = round(position.X, position.Y)
 
-            drawings.box.Size = newVector2(width,height)
-            drawings.box.Position = newVector2(x-width/2, y-height/2)
+            drawings.box.Size = newVector2(width, height)
+            drawings.box.Position = newVector2(x - width/2, y - height/2)
             drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
 
             drawings.boxoutline.Size = drawings.box.Size
@@ -100,8 +125,12 @@ end
 RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
     if not espEnabled then return end
     for player, drawings in pairs(espCache) do
-        if settings.teamcheck and player.Team == LocalPlayer.Team then continue end
-        if drawings and player ~= LocalPlayer then
+        if player.Parent and player ~= LocalPlayer then
+            if settings.teamcheck and player.Team == LocalPlayer.Team then 
+                drawings.box.Visible = false
+                drawings.boxoutline.Visible = false
+                continue 
+            end
             updateEsp(player, drawings)
         end
     end
@@ -109,28 +138,42 @@ end)
 
 --// Player added/removed
 Players.PlayerAdded:Connect(function(player)
-    if espEnabled then createEsp(player) end
+    if espEnabled then 
+        createEsp(player) 
+    end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
 
+--// Character added (for respawns)
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            wait(0.1) -- Small delay to ensure character loads
+            if espEnabled and not espCache[player] then
+                createEsp(player)
+            end
+        end)
+    end
+end
+
 --// Toggle function
 local function ToggleESP(Value)
     espEnabled = Value
     if espEnabled then
         for _, player in pairs(Players:GetPlayers()) do
-            createEsp(player)
+            if player ~= LocalPlayer then
+                createEsp(player)
+            end
         end
     else
         destroyAllEsp()
     end
 end
 
---// ===== GUI =====
--- Replace `LeftGroupBox` with your actual GUI groupbox variable
-local LeftGroupBox = LeftGroupBox or error("LeftGroupBox not found!")
+--// ===== GUI Setup =====
 
 -- Main ESP toggle
 LeftGroupBox:AddToggle('espbox', {
@@ -139,6 +182,16 @@ LeftGroupBox:AddToggle('espbox', {
     Tooltip = 'Toggles Box ESP visibility',
     Callback = function(Value)
         ToggleESP(Value)
+    end
+})
+
+-- Team check toggle
+LeftGroupBox:AddToggle('teamcheck', {
+    Text = 'Team Check',
+    Default = false,
+    Tooltip = 'Hide teammates ESP',
+    Callback = function(Value)
+        settings.teamcheck = Value
     end
 })
 
@@ -161,3 +214,17 @@ LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
         settings.defaultcolor = Value
     end
 })
+
+--// Theme/Settings (Optional - adds theme manager and settings)
+local MenuGroup = Tabs.Main:AddRightGroupbox('Menu')
+MenuGroup:AddButton('Unload', function() Library:Unload() end)
+MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'End', NoUI = true, Text = 'Menu keybind' })
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+--// Watermark
+Library:SetWatermarkVisibility(true)
+Library:SetWatermark('ESP Script | ' .. os.date('%B %d, %Y'))
+
+--// Init
+Library:Notify('ESP Script Loaded!', 3)
