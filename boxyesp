@@ -31,7 +31,6 @@ end
 --// Create ESP
 local function createEsp(player)
     if player == LocalPlayer or espCache[player] then return end
-
     local drawings = {}
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 0.4
@@ -129,10 +128,11 @@ local function ToggleESP(Value)
     end
 end
 
---// === GUI ===
--- Replace `LeftGroupBox` with your GUI container variable
-local LeftGroupBox = LeftGroupBox("LeftGroupBox GUI container not found!")
+--// ===== GUI =====
+-- Replace `LeftGroupBox` with your actual GUI groupbox variable
+local LeftGroupBox = LeftGroupBox or error("LeftGroupBox not found!")
 
+-- Main ESP toggle
 LeftGroupBox:AddToggle('espbox', {
     Text = 'Enable Box ESP',
     Default = false,
@@ -142,6 +142,7 @@ LeftGroupBox:AddToggle('espbox', {
     end
 })
 
+-- Team color toggle
 LeftGroupBox:AddToggle('teamcolor', {
     Text = 'Use Team Colors',
     Default = true,
@@ -151,9 +152,11 @@ LeftGroupBox:AddToggle('teamcolor', {
     end
 })
 
-LeftGroupBox:AddColorPicker('espcolor', {
-    Text = 'ESP Color',
+-- Color picker
+LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
     Default = settings.defaultcolor,
+    Title = 'Pick a color',
+    Transparency = 0,
     Callback = function(Value)
         settings.defaultcolor = Value
     end
