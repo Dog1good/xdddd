@@ -1,5 +1,4 @@
- RightGroupBox = Tabs.Visuals:AddRightGroupbox('No Fog')
-
+ 
     local lighting = game:GetService("Lighting")
     local StarterGui = game:GetService("StarterGui")
     local debris = game:GetService("Debris")
