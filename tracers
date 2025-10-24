@@ -13,7 +13,7 @@ mouse = player:GetMouse()
 
 -- Settings for Tracers
 Settings = {
-    Tracer_Color = Color3.fromRGB(0, 0, 255),
+    Tracer_Color = Color3.fromRGB(255, 255, 255),
     Tracer_Thickness = 1,
     Tracer_Origin = "Bottom",
     Tracer_FollowMouse = false
