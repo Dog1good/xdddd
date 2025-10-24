@@ -1,4 +1,4 @@
-LeftGroupBox = Tabs.Visuals:AddLeftGroupbox('Tracers')
+
 
 -- Optimized Tracer Script with Toggling, Mouse Follow, and Object Pooling
 
