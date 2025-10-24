@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 --// Settings
 local settings = {
@@ -13,7 +14,6 @@ local settings = {
 --// Variables
 local espEnabled = false
 local espCache = {}
-local Camera = workspace.CurrentCamera
 
 --// Helper functions
 local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
@@ -28,7 +28,7 @@ local wtvp = function(...)
     return newVector2(a.X,a.Y), b, a.Z
 end
 
---// Create ESP for a player
+--// Create ESP
 local function createEsp(player)
     if player == LocalPlayer or espCache[player] then return end
 
@@ -50,7 +50,7 @@ local function createEsp(player)
     espCache[player] = drawings
 end
 
---// Remove ESP for one player
+--// Remove ESP
 local function removeEsp(player)
     if espCache[player] then
         for _, drawing in pairs(espCache[player]) do
@@ -117,7 +117,7 @@ Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
 
---// Toggle function (self-contained)
+--// Toggle function
 local function ToggleESP(Value)
     espEnabled = Value
     if espEnabled then
@@ -129,12 +129,32 @@ local function ToggleESP(Value)
     end
 end
 
---// GUI example (replace LeftGroupBox with your GUI container)
+--// === GUI ===
+-- Replace `LeftGroupBox` with your GUI container variable
+local LeftGroupBox = LeftGroupBox or error("LeftGroupBox GUI container not found!")
+
 LeftGroupBox:AddToggle('espbox', {
     Text = 'Enable Box ESP',
     Default = false,
     Tooltip = 'Toggles Box ESP visibility',
     Callback = function(Value)
         ToggleESP(Value)
+    end
+})
+
+LeftGroupBox:AddToggle('teamcolor', {
+    Text = 'Use Team Colors',
+    Default = true,
+    Tooltip = 'Changes ESP color to player team color',
+    Callback = function(Value)
+        settings.teamcolor = Value
+    end
+})
+
+LeftGroupBox:AddColorPicker('espcolor', {
+    Text = 'ESP Color',
+    Default = settings.defaultcolor,
+    Callback = function(Value)
+        settings.defaultcolor = Value
     end
 })
