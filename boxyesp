@@ -138,8 +138,8 @@ local function ToggleESP(Value)
     end
 end
 
---// GUI Elements (Add these to your LeftGroupBox or wherever)
-LeftGroupBox:AddToggle('espbox', {
+--// GUI Elements for BoxESPBox
+BoxESPBox:AddToggle('espbox', {
     Text = 'Enable Box ESP',
     Default = false,
     Tooltip = 'Toggles Box ESP visibility',
@@ -148,7 +148,7 @@ LeftGroupBox:AddToggle('espbox', {
     end
 })
 
-LeftGroupBox:AddToggle('teamcheck', {
+BoxESPBox:AddToggle('teamcheck', {
     Text = 'Team Check',
     Default = false,
     Tooltip = 'Hide teammates ESP',
@@ -157,7 +157,7 @@ LeftGroupBox:AddToggle('teamcheck', {
     end
 })
 
-LeftGroupBox:AddToggle('teamcolor', {
+BoxESPBox:AddToggle('teamcolor', {
     Text = 'Use Team Colors',
     Default = true,
     Tooltip = 'Changes ESP color to player team color',
@@ -166,7 +166,7 @@ LeftGroupBox:AddToggle('teamcolor', {
     end
 })
 
-LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
+BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
     Default = settings.defaultcolor,
     Title = 'Pick a color',
     Transparency = 0,
