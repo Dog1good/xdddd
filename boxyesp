@@ -1,3 +1,6 @@
+--// Box ESP Script for LinoriaLib
+--// Assumes BoxESPBox is already defined in the main script
+
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -138,39 +141,43 @@ local function ToggleESP(Value)
     end
 end
 
---// GUI Elements for BoxESPBox
-BoxESPBox:AddToggle('espbox', {
-    Text = 'Enable Box ESP',
-    Default = false,
-    Tooltip = 'Toggles Box ESP visibility',
-    Callback = function(Value)
-        ToggleESP(Value)
-    end
-})
+--// GUI Elements - Uses the BoxESPBox variable from main script
+if BoxESPBox then
+    BoxESPBox:AddToggle('espbox', {
+        Text = 'Enable Box ESP',
+        Default = false,
+        Tooltip = 'Toggles Box ESP visibility',
+        Callback = function(Value)
+            ToggleESP(Value)
+        end
+    })
 
-BoxESPBox:AddToggle('teamcheck', {
-    Text = 'Team Check',
-    Default = false,
-    Tooltip = 'Hide teammates ESP',
-    Callback = function(Value)
-        settings.teamcheck = Value
-    end
-})
+    BoxESPBox:AddToggle('teamcheck', {
+        Text = 'Team Check',
+        Default = false,
+        Tooltip = 'Hide teammates ESP',
+        Callback = function(Value)
+            settings.teamcheck = Value
+        end
+    })
 
-BoxESPBox:AddToggle('teamcolor', {
-    Text = 'Use Team Colors',
-    Default = true,
-    Tooltip = 'Changes ESP color to player team color',
-    Callback = function(Value)
-        settings.teamcolor = Value
-    end
-})
+    BoxESPBox:AddToggle('teamcolor', {
+        Text = 'Use Team Colors',
+        Default = true,
+        Tooltip = 'Changes ESP color to player team color',
+        Callback = function(Value)
+            settings.teamcolor = Value
+        end
+    })
 
-BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
-    Default = settings.defaultcolor,
-    Title = 'Pick a color',
-    Transparency = 0,
-    Callback = function(Value)
-        settings.defaultcolor = Value
-    end
-})
+    BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
+        Default = settings.defaultcolor,
+        Title = 'Pick a color',
+        Transparency = 0,
+        Callback = function(Value)
+            settings.defaultcolor = Value
+        end
+    })
+else
+    warn("BoxESPBox not found! Make sure it's defined before loading this script.")
+end
