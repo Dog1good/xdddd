@@ -8,6 +8,7 @@ local settings = {
 -- services
 local runService = game:GetService("RunService");
 local players = game:GetService("Players");
+local debris = game:GetService("Debris");
 
 -- variables
 local localPlayer = players.LocalPlayer;
@@ -20,18 +21,20 @@ local round = function(...) local a = {}; for i,v in next, table.pack(...) do a[
 local wtvp = function(...) local a, b = camera.WorldToViewportPoint(camera, ...) return newVector2(a.X, a.Y), b, a.Z end;
 
 local espCache = {};
+
+-- Create ESP for player
 local function createEsp(player)
    local drawings = {};
    
    drawings.box = newDrawing("Square");
-   drawings.box.Thickness = 1;
+   drawings.box.Thickness = 0.4;
    drawings.box.Filled = false;
    drawings.box.Color = settings.defaultcolor;
    drawings.box.Visible = false;
    drawings.box.ZIndex = 2;
 
    drawings.boxoutline = newDrawing("Square");
-   drawings.boxoutline.Thickness = 3;
+   drawings.boxoutline.Thickness = 0;
    drawings.boxoutline.Filled = false;
    drawings.boxoutline.Color = newColor3();
    drawings.boxoutline.Visible = false;
@@ -40,6 +43,7 @@ local function createEsp(player)
    espCache[player] = drawings;
 end
 
+-- Remove ESP for one player
 local function removeEsp(player)
    if rawget(espCache, player) then
        for _, drawing in next, espCache[player] do
@@ -49,6 +53,18 @@ local function removeEsp(player)
    end
 end
 
+-- 🧹 Function to remove all ESPs (like RemoveNameTags)
+local function DestroyAllEsp()
+   for player, drawings in pairs(espCache) do
+       for _, drawing in next, drawings do
+           drawing:Remove();
+       end
+       espCache[player] = nil;
+   end
+   print("[ESP] All drawings destroyed.");
+end
+
+-- Update ESP for player
 local function updateEsp(player, esp)
    local character = player and player.Character;
    if character then
@@ -101,3 +117,6 @@ runService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
        end
    end
 end)
+
+-- Example usage:
+-- DestroyAllEsp() -- Call this to completely clear ESP drawings
