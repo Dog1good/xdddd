@@ -1,4 +1,4 @@
-RightGroupBox = Tabs.Visuals:AddRightGroupbox('Ambience')
+
 
     -- Place this script in LocalScript or StarterPlayer -> StarterPlayerScripts
 
