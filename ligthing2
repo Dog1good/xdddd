@@ -1,0 +1,78 @@
+    RightGroupBox = Tabs.Visuals:AddRightGroupbox('Fullbright')
+
+    RightGroupBox:AddToggle('MyToggle', {
+        Text = 'Fullbright',
+        Default = false, -- Default value (true / false)
+        Tooltip = 'Removes shadows and increases brightness', -- Information shown when you hover over the toggle
+    
+        Callback = function(Value)
+            if not _G.FullBrightExecuted then
+                _G.FullBrightEnabled = false
+    
+                local Lighting = game:GetService("Lighting")
+                
+                -- Store default settings in a table
+                _G.NormalLightingSettings = {
+                    Brightness = Lighting.Brightness,
+                    ClockTime = Lighting.ClockTime,
+                    GlobalShadows = Lighting.GlobalShadows,
+                    Ambient = Lighting.Ambient
+                }
+    
+                -- Full Bright settings
+                local FullBrightSettings = {
+                    Brightness = 1,
+                    ClockTime = 12,
+                    GlobalShadows = false,
+                    Ambient = Color3.fromRGB(178, 178, 178)
+                }
+    
+                -- Set lighting properties
+                local function setLightingProperties(properties)
+                    for property, value in pairs(properties) do
+                        Lighting[property] = value
+                    end
+                end
+    
+                -- Initial setup
+                setLightingProperties(FullBrightSettings)
+    
+                -- Create a single function to handle property changes
+                local function createPropertyChangeListener(property, defaultValue, newValue)
+                    Lighting:GetPropertyChangedSignal(property):Connect(function()
+                        if Lighting[property] ~= defaultValue and Lighting[property] ~= _G.NormalLightingSettings[property] then
+                            _G.NormalLightingSettings[property] = Lighting[property]
+                            if not _G.FullBrightEnabled then
+                                repeat wait() until _G.FullBrightEnabled
+                            end
+                            Lighting[property] = newValue
+                        end
+                    end)
+                end
+    
+                -- Set up property listeners
+                for property, newValue in pairs(FullBrightSettings) do
+                    createPropertyChangeListener(property, newValue, newValue)
+                end
+    
+                -- Periodically toggle FullBright settings
+                local LatestValue = true
+                spawn(function()
+                    while wait() do
+                        if _G.FullBrightEnabled ~= LatestValue then
+                            if not _G.FullBrightEnabled then
+                                setLightingProperties(_G.NormalLightingSettings)
+                            else
+                                setLightingProperties(FullBrightSettings)
+                            end
+                            LatestValue = not LatestValue
+                        end
+                    end
+                end)
+            end
+    
+            -- Toggle full bright state
+            _G.FullBrightExecuted = true
+            _G.FullBrightEnabled = Value -- directly using Value here to toggle the state
+        end
+    })    
