@@ -1,6 +1,7 @@
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Crosshair Variables
@@ -105,7 +106,7 @@ local function CreateCrosshair()
     elseif CrosshairType == "Cross" then
         -- Diagonal 1
         local diag1 = Instance.new("Frame")
-        diag1.Size = UDim2.new(0, 4, 1.4, 0)
+        diag1.Size = UDim2.new(0, 3, 1.2, 0)
         diag1.Position = UDim2.new(0.5, 0, 0.5, 0)
         diag1.AnchorPoint = Vector2.new(0.5, 0.5)
         diag1.BackgroundColor3 = CrosshairColor
@@ -115,12 +116,18 @@ local function CreateCrosshair()
         
         local outline1 = Instance.new("UIStroke")
         outline1.Color = Color3.fromRGB(0, 0, 0)
-        outline1.Thickness = 1
+        outline1.Thickness = 2
         outline1.Parent = diag1
+        
+        local glow1 = Instance.new("UIStroke")
+        glow1.Color = CrosshairColor
+        glow1.Thickness = 0.5
+        glow1.Transparency = 0.5
+        glow1.Parent = diag1
         
         -- Diagonal 2
         local diag2 = Instance.new("Frame")
-        diag2.Size = UDim2.new(0, 4, 1.4, 0)
+        diag2.Size = UDim2.new(0, 3, 1.2, 0)
         diag2.Position = UDim2.new(0.5, 0, 0.5, 0)
         diag2.AnchorPoint = Vector2.new(0.5, 0.5)
         diag2.BackgroundColor3 = CrosshairColor
@@ -130,13 +137,37 @@ local function CreateCrosshair()
         
         local outline2 = Instance.new("UIStroke")
         outline2.Color = Color3.fromRGB(0, 0, 0)
-        outline2.Thickness = 1
+        outline2.Thickness = 2
         outline2.Parent = diag2
         
+        local glow2 = Instance.new("UIStroke")
+        glow2.Color = CrosshairColor
+        glow2.Thickness = 0.5
+        glow2.Transparency = 0.5
+        glow2.Parent = diag2
+        
+        -- Center dot
+        local centerDot = Instance.new("Frame")
+        centerDot.Size = UDim2.new(0, 3, 0, 3)
+        centerDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        centerDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        centerDot.BackgroundColor3 = CrosshairColor
+        centerDot.BorderSizePixel = 0
+        centerDot.Parent = crosshair
+        
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = centerDot
+        
+        local dotOutline = Instance.new("UIStroke")
+        dotOutline.Color = Color3.fromRGB(0, 0, 0)
+        dotOutline.Thickness = 1.5
+        dotOutline.Parent = centerDot
+        
     elseif CrosshairType == "Dot" then
-        -- Simple dot
+        -- Main dot
         local dot = Instance.new("Frame")
-        dot.Size = UDim2.new(0, 8, 0, 8)
+        dot.Size = UDim2.new(0, 6, 0, 6)
         dot.Position = UDim2.new(0.5, 0, 0.5, 0)
         dot.AnchorPoint = Vector2.new(0.5, 0.5)
         dot.BackgroundColor3 = CrosshairColor
@@ -149,32 +180,62 @@ local function CreateCrosshair()
         
         local outline = Instance.new("UIStroke")
         outline.Color = Color3.fromRGB(0, 0, 0)
-        outline.Thickness = 2
+        outline.Thickness = 2.5
         outline.Parent = dot
         
+        local glow = Instance.new("UIStroke")
+        glow.Color = CrosshairColor
+        glow.Thickness = 1
+        glow.Transparency = 0.3
+        glow.Parent = dot
+        
     elseif CrosshairType == "Circle" then
-        -- Circle outline
-        local circle = Instance.new("Frame")
-        circle.Size = UDim2.new(1, 0, 1, 0)
-        circle.Position = UDim2.new(0.5, 0, 0.5, 0)
-        circle.AnchorPoint = Vector2.new(0.5, 0.5)
-        circle.BackgroundTransparency = 1
-        circle.BorderSizePixel = 0
-        circle.Parent = crosshair
+        -- Outer circle
+        local outerCircle = Instance.new("Frame")
+        outerCircle.Size = UDim2.new(1, 0, 1, 0)
+        outerCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+        outerCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+        outerCircle.BackgroundTransparency = 1
+        outerCircle.BorderSizePixel = 0
+        outerCircle.Parent = crosshair
         
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(1, 0)
-        corner.Parent = circle
+        local outerCorner = Instance.new("UICorner")
+        outerCorner.CornerRadius = UDim.new(1, 0)
+        outerCorner.Parent = outerCircle
         
-        local outline = Instance.new("UIStroke")
-        outline.Color = CrosshairColor
-        outline.Thickness = 3
-        outline.Parent = circle
+        local outerStroke = Instance.new("UIStroke")
+        outerStroke.Color = CrosshairColor
+        outerStroke.Thickness = 3
+        outerStroke.Parent = outerCircle
         
         local blackOutline = Instance.new("UIStroke")
         blackOutline.Color = Color3.fromRGB(0, 0, 0)
-        blackOutline.Thickness = 1
-        blackOutline.Parent = outline
+        blackOutline.Thickness = 1.5
+        blackOutline.Parent = outerCircle
+        
+        local glow = Instance.new("UIStroke")
+        glow.Color = CrosshairColor
+        glow.Thickness = 1
+        glow.Transparency = 0.4
+        glow.Parent = outerCircle
+        
+        -- Center dot
+        local centerDot = Instance.new("Frame")
+        centerDot.Size = UDim2.new(0, 4, 0, 4)
+        centerDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        centerDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        centerDot.BackgroundColor3 = CrosshairColor
+        centerDot.BorderSizePixel = 0
+        centerDot.Parent = crosshair
+        
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = centerDot
+        
+        local dotOutline = Instance.new("UIStroke")
+        dotOutline.Color = Color3.fromRGB(0, 0, 0)
+        dotOutline.Thickness = 1.5
+        dotOutline.Parent = centerDot
     end
     
     rotation = 0
@@ -223,9 +284,16 @@ local function ToggleCrosshair(Value)
                 return
             end
             
-            -- Update position to follow mouse
+            -- Update position
             if CrosshairFollowMouse then
+                -- Follow mouse cursor
                 crosshair.Position = UDim2.new(0, mouse.X, 0, mouse.Y)
+            else
+                -- Center of screen
+                local camera = workspace.CurrentCamera
+                if camera then
+                    crosshair.Position = UDim2.new(0.5, 0, 0.5, 0)
+                end
             end
             
             -- Update rotation
