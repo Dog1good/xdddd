@@ -1,0 +1,334 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Crosshair Variables
+local CrosshairType = "Plus"
+local CrosshairSpinning = true
+local CrosshairSpeed = 2
+local CrosshairFollowMouse = true
+local CrosshairColor = Color3.fromRGB(255, 255, 255)
+local CrosshairSize = 40
+
+local screenGui = nil
+local crosshair = nil
+local rotation = 0
+local renderConnection = nil
+
+-- Crosshair Creation Function
+local function CreateCrosshair()
+    local mouse = LocalPlayer:GetMouse()
+    
+    -- Remove old crosshair if exists
+    if screenGui then
+        screenGui:Destroy()
+    end
+    
+    -- Create ScreenGui
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CrosshairGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = LocalPlayer.PlayerGui
+    
+    -- Create Frame for crosshair
+    crosshair = Instance.new("Frame")
+    crosshair.Name = "Crosshair"
+    crosshair.Size = UDim2.new(0, CrosshairSize, 0, CrosshairSize)
+    crosshair.Position = UDim2.new(0, mouse.X, 0, mouse.Y)
+    crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+    crosshair.BackgroundTransparency = 1
+    crosshair.Parent = screenGui
+    
+    -- Create crosshair based on type
+    if CrosshairType == "Plus" then
+        -- Vertical bar
+        local vertical = Instance.new("Frame")
+        vertical.Name = "Vertical"
+        vertical.Size = UDim2.new(0, 3, 0.8, 0)
+        vertical.Position = UDim2.new(0.5, 0, 0.1, 0)
+        vertical.AnchorPoint = Vector2.new(0.5, 0)
+        vertical.BackgroundColor3 = CrosshairColor
+        vertical.BorderSizePixel = 0
+        vertical.Parent = crosshair
+        
+        local outline1 = Instance.new("UIStroke")
+        outline1.Color = Color3.fromRGB(0, 0, 0)
+        outline1.Thickness = 2
+        outline1.Parent = vertical
+        
+        local glow1 = Instance.new("UIStroke")
+        glow1.Color = CrosshairColor
+        glow1.Thickness = 0.5
+        glow1.Transparency = 0.5
+        glow1.Parent = vertical
+        
+        -- Horizontal bar
+        local horizontal = Instance.new("Frame")
+        horizontal.Name = "Horizontal"
+        horizontal.Size = UDim2.new(0.8, 0, 0, 3)
+        horizontal.Position = UDim2.new(0.1, 0, 0.5, 0)
+        horizontal.AnchorPoint = Vector2.new(0, 0.5)
+        horizontal.BackgroundColor3 = CrosshairColor
+        horizontal.BorderSizePixel = 0
+        horizontal.Parent = crosshair
+        
+        local outline2 = Instance.new("UIStroke")
+        outline2.Color = Color3.fromRGB(0, 0, 0)
+        outline2.Thickness = 2
+        outline2.Parent = horizontal
+        
+        local glow2 = Instance.new("UIStroke")
+        glow2.Color = CrosshairColor
+        glow2.Thickness = 0.5
+        glow2.Transparency = 0.5
+        glow2.Parent = horizontal
+        
+        -- Center dot
+        local centerDot = Instance.new("Frame")
+        centerDot.Size = UDim2.new(0, 2, 0, 2)
+        centerDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        centerDot.AnchorPoint = Vector2.new(0.5, 0.5)
+        centerDot.BackgroundColor3 = CrosshairColor
+        centerDot.BorderSizePixel = 0
+        centerDot.Parent = crosshair
+        
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = centerDot
+        
+        local dotOutline = Instance.new("UIStroke")
+        dotOutline.Color = Color3.fromRGB(0, 0, 0)
+        dotOutline.Thickness = 1
+        dotOutline.Parent = centerDot
+        
+    elseif CrosshairType == "Cross" then
+        -- Diagonal 1
+        local diag1 = Instance.new("Frame")
+        diag1.Size = UDim2.new(0, 4, 1.4, 0)
+        diag1.Position = UDim2.new(0.5, 0, 0.5, 0)
+        diag1.AnchorPoint = Vector2.new(0.5, 0.5)
+        diag1.BackgroundColor3 = CrosshairColor
+        diag1.BorderSizePixel = 0
+        diag1.Rotation = 45
+        diag1.Parent = crosshair
+        
+        local outline1 = Instance.new("UIStroke")
+        outline1.Color = Color3.fromRGB(0, 0, 0)
+        outline1.Thickness = 1
+        outline1.Parent = diag1
+        
+        -- Diagonal 2
+        local diag2 = Instance.new("Frame")
+        diag2.Size = UDim2.new(0, 4, 1.4, 0)
+        diag2.Position = UDim2.new(0.5, 0, 0.5, 0)
+        diag2.AnchorPoint = Vector2.new(0.5, 0.5)
+        diag2.BackgroundColor3 = CrosshairColor
+        diag2.BorderSizePixel = 0
+        diag2.Rotation = -45
+        diag2.Parent = crosshair
+        
+        local outline2 = Instance.new("UIStroke")
+        outline2.Color = Color3.fromRGB(0, 0, 0)
+        outline2.Thickness = 1
+        outline2.Parent = diag2
+        
+    elseif CrosshairType == "Dot" then
+        -- Simple dot
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, 8, 0, 8)
+        dot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.BackgroundColor3 = CrosshairColor
+        dot.BorderSizePixel = 0
+        dot.Parent = crosshair
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = dot
+        
+        local outline = Instance.new("UIStroke")
+        outline.Color = Color3.fromRGB(0, 0, 0)
+        outline.Thickness = 2
+        outline.Parent = dot
+        
+    elseif CrosshairType == "Circle" then
+        -- Circle outline
+        local circle = Instance.new("Frame")
+        circle.Size = UDim2.new(1, 0, 1, 0)
+        circle.Position = UDim2.new(0.5, 0, 0.5, 0)
+        circle.AnchorPoint = Vector2.new(0.5, 0.5)
+        circle.BackgroundTransparency = 1
+        circle.BorderSizePixel = 0
+        circle.Parent = crosshair
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(1, 0)
+        corner.Parent = circle
+        
+        local outline = Instance.new("UIStroke")
+        outline.Color = CrosshairColor
+        outline.Thickness = 3
+        outline.Parent = circle
+        
+        local blackOutline = Instance.new("UIStroke")
+        blackOutline.Color = Color3.fromRGB(0, 0, 0)
+        blackOutline.Thickness = 1
+        blackOutline.Parent = outline
+    end
+    
+    rotation = 0
+end
+
+-- Destroy Crosshair Function
+local function DestroyCrosshair()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+    
+    if screenGui then
+        screenGui:Destroy()
+        screenGui = nil
+        crosshair = nil
+    end
+    
+    -- Restore default cursor
+    local mouse = LocalPlayer:GetMouse()
+    mouse.Icon = ""
+end
+
+-- Update Crosshair Function
+local function UpdateCrosshair()
+    if _G.crosshair then
+        CreateCrosshair()
+    end
+end
+
+-- Toggle function
+local function ToggleCrosshair(Value)
+    _G.crosshair = Value
+    
+    local mouse = LocalPlayer:GetMouse()
+    
+    if _G.crosshair then
+        -- Hide default Roblox cursor
+        mouse.Icon = "rbxasset://SystemCursors/Blank"
+        
+        CreateCrosshair()
+        
+        -- Start render loop
+        renderConnection = RunService.RenderStepped:Connect(function(dt)
+            if not _G.crosshair or not crosshair then
+                return
+            end
+            
+            -- Update position to follow mouse
+            if CrosshairFollowMouse then
+                crosshair.Position = UDim2.new(0, mouse.X, 0, mouse.Y)
+            end
+            
+            -- Update rotation
+            if CrosshairSpinning then
+                rotation = rotation + (CrosshairSpeed * 360 * dt)
+                if rotation >= 360 then
+                    rotation = rotation - 360
+                end
+                crosshair.Rotation = rotation
+            else
+                crosshair.Rotation = 0
+            end
+        end)
+    else
+        -- Restore default Roblox cursor
+        mouse.Icon = ""
+        DestroyCrosshair()
+    end
+end
+
+-- GUI Toggle
+LeftGroupBox:AddToggle('CrosshairToggle', {
+    Text = 'Enable Crosshair',
+    Default = false,
+    Tooltip = 'Toggle custom crosshair',
+    Callback = ToggleCrosshair
+})
+
+-- Crosshair Type Dropdown
+LeftGroupBox:AddDropdown('CrosshairTypeDropdown', {
+    Values = { 'Plus', 'Cross', 'Dot', 'Circle' },
+    Default = 1,
+    Multi = false,
+    Text = 'Crosshair Type',
+    Tooltip = 'Select crosshair style',
+    Callback = function(Value)
+        CrosshairType = Value
+        if _G.crosshair then
+            UpdateCrosshair()
+        end
+    end
+})
+
+-- Spinning Toggle
+LeftGroupBox:AddToggle('CrosshairSpinningToggle', {
+    Text = 'Spinning',
+    Default = true,
+    Tooltip = 'Enable/disable rotation',
+    Callback = function(Value)
+        CrosshairSpinning = Value
+    end
+})
+
+-- Speed Slider
+LeftGroupBox:AddSlider('CrosshairSpeedSlider', {
+    Text = 'Spin Speed',
+    Default = 2,
+    Min = 0,
+    Max = 10,
+    Rounding = 1,
+    Compact = false,
+    Tooltip = 'Adjust rotation speed',
+    Callback = function(Value)
+        CrosshairSpeed = Value
+    end
+})
+
+-- Follow Mouse Toggle
+LeftGroupBox:AddToggle('CrosshairFollowMouseToggle', {
+    Text = 'Follow Mouse',
+    Default = true,
+    Tooltip = 'Make crosshair follow cursor',
+    Callback = function(Value)
+        CrosshairFollowMouse = Value
+    end
+})
+
+-- Color Picker
+LeftGroupBox:AddLabel('Crosshair Color'):AddColorPicker('CrosshairColorPicker', {
+    Default = CrosshairColor,
+    Title = 'Crosshair Color',
+    Transparency = 0,
+    Callback = function(Value)
+        CrosshairColor = Value
+        if _G.crosshair then
+            UpdateCrosshair()
+        end
+    end
+})
+
+-- Size Slider
+LeftGroupBox:AddSlider('CrosshairSizeSlider', {
+    Text = 'Size',
+    Default = 40,
+    Min = 20,
+    Max = 80,
+    Rounding = 1,
+    Compact = false,
+    Tooltip = 'Adjust crosshair size',
+    Callback = function(Value)
+        CrosshairSize = Value
+        if _G.crosshair then
+            UpdateCrosshair()
+        end
+    end
+})
