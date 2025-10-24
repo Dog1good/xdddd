@@ -75,6 +75,7 @@ local function destroyAllEsp()
         end
         espCache[player] = nil
     end
+    print("[ESP] All ESP boxes destroyed.")
 end
 
 --// Update ESP positions
@@ -128,26 +129,3 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
-
---// 🧠 UI Integration Example
-local BoxESPBox = Tabs.Visuals:AddLeftGroupbox('Player Box ESP')
-
-BoxESPBox:AddToggle('espbox', {
-    Text = 'Enable Box ESP',
-    Default = false,
-    Tooltip = 'Toggles the Box ESP visibility',
-    Callback = function(Value)
-        espEnabled = Value
-        if espEnabled then
-            -- Create ESP for all players
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    createEsp(player)
-                end
-            end
-        else
-            -- Destroy all ESPs
-            destroyAllEsp()
-        end
-    end
-})
