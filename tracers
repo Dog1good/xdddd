@@ -1,19 +1,17 @@
-
-
--- Optimized Tracer Script with Toggling, Mouse Follow, and Object Pooling
+-- Optimized Tracer Script with Toggling, Mouse Follow, Color Picker, and Object Pooling
 
 -- Services
-Players = game:GetService("Players")
-RunService = game:GetService("RunService")
-Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 
-player = Players.LocalPlayer
-camera = workspace.CurrentCamera
-mouse = player:GetMouse()
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local mouse = player:GetMouse()
 
 -- Settings for Tracers
-Settings = {
-    Tracer_Color = Color3.fromRGB(255, 255, 255),
+local Settings = {
+    Tracer_Color = Color3.fromRGB(0, 0, 255),
     Tracer_Thickness = 1,
     Tracer_Origin = "Bottom",
     Tracer_FollowMouse = false
@@ -24,10 +22,10 @@ _G.TracersEnabled = false
 _G.TracersFollowMouse = false
 
 -- Tracer pool to reuse tracers
-tracerPool = {}
+local tracerPool = {}
 
 -- Function to get or create a new tracer line
-function GetTracer()
+local function GetTracer()
     local tracer = table.remove(tracerPool) -- Reuse if available
     if not tracer then
         tracer = Drawing.new("Line")
@@ -40,13 +38,13 @@ function GetTracer()
 end
 
 -- Function to return tracers to the pool
-function ReturnTracer(tracer)
+local function ReturnTracer(tracer)
     tracer.Visible = false
     table.insert(tracerPool, tracer)
 end
 
 -- Function to determine tracer origin point
-function GetTracerOrigin()
+local function GetTracerOrigin()
     local viewportSize = camera.ViewportSize
     if _G.TracersFollowMouse then
         return Vector2.new(mouse.X, mouse.Y + 60)
@@ -66,10 +64,10 @@ function GetTracerOrigin()
 end
 
 -- Table to store active tracers
-activeTracers = {}
+local activeTracers = {}
 
 -- Function to update tracers
-function UpdateTracers()
+local function UpdateTracers()
     if not _G.TracersEnabled then
         for plr, tracer in pairs(activeTracers) do
             ReturnTracer(tracer)
@@ -96,6 +94,7 @@ function UpdateTracers()
                         tracer.From = GetTracerOrigin()
                         tracer.To = Vector2.new(screenPos.X, screenPos.Y)
                         tracer.Visible = true
+                        tracer.Color = Settings.Tracer_Color
                     else
                         tracer.Visible = false
                     end
@@ -109,14 +108,14 @@ function UpdateTracers()
 end
 
 -- Function to handle new players
-function OnPlayerAdded(plr)
+local function OnPlayerAdded(plr)
     if _G.TracersEnabled then
         activeTracers[plr] = GetTracer()
     end
 end
 
 -- Function to handle player removal
-function OnPlayerRemoving(plr)
+local function OnPlayerRemoving(plr)
     local tracer = activeTracers[plr]
     if tracer then
         ReturnTracer(tracer)
@@ -129,8 +128,8 @@ Players.PlayerAdded:Connect(OnPlayerAdded)
 Players.PlayerRemoving:Connect(OnPlayerRemoving)
 
 -- RunService loop for updating tracers
-tracerConnection = nil
-function ToggleTracers(enabled)
+local tracerConnection = nil
+local function ToggleTracers(enabled)
     _G.TracersEnabled = enabled
 
     if enabled then
@@ -148,7 +147,11 @@ function ToggleTracers(enabled)
     end
 end
 
--- UI Elements
+-- =======================
+-- GUI ELEMENTS
+-- =======================
+
+-- Toggle to enable tracers
 LeftGroupBox:AddToggle('TracersToggle', {
     Text = 'Enable Tracers',
     Default = false,
@@ -156,6 +159,7 @@ LeftGroupBox:AddToggle('TracersToggle', {
     Callback = ToggleTracers
 })
 
+-- Toggle for mouse follow
 LeftGroupBox:AddToggle('MouseFollowToggle', {
     Text = 'Enable Mouse Follow for Tracers',
     Default = false,
@@ -165,6 +169,7 @@ LeftGroupBox:AddToggle('MouseFollowToggle', {
     end
 })
 
+-- Dropdown for tracer origin
 LeftGroupBox:AddDropdown('TracerPositionDropdown', {
     Values = { 'Bottom', 'Top', 'Left', 'Right' },
     Default = 1,
@@ -179,3 +184,17 @@ LeftGroupBox:AddDropdown('TracerPositionDropdown', {
 Options.TracerPositionDropdown:OnChanged(function()
     print('Tracer position changed. New value:', Options.TracerPositionDropdown.Value)
 end)
+
+-- Color picker for tracer color
+LeftGroupBox:AddLabel('Tracer Color'):AddColorPicker('TracerColorPicker', {
+    Default = Settings.Tracer_Color,
+    Title = 'Tracer Color',
+    Transparency = 0, -- disables transparency
+    Callback = function(Value)
+        Settings.Tracer_Color = Value
+        -- Update all active tracers immediately
+        for _, tracer in pairs(activeTracers) do
+            tracer.Color = Settings.Tracer_Color
+        end
+    end
+})
