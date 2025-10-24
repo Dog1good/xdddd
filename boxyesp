@@ -1,12 +1,7 @@
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-
---// Variables
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local espEnabled = false
 
 --// Settings
 local settings = {
@@ -15,31 +10,29 @@ local settings = {
     teamcolor = true
 }
 
---// Cached ESP drawings
+--// Variables
+local espEnabled = false
 local espCache = {}
+local Camera = workspace.CurrentCamera
 
 --// Helper functions
 local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
 local tan, rad = math.tan, math.rad
 local round = function(...)
     local a = {}
-    for i, v in next, table.pack(...) do
-        a[i] = math.round(v)
-    end
+    for i,v in next, table.pack(...) do a[i] = math.round(v) end
     return unpack(a)
 end
 local wtvp = function(...)
-    local a, b = Camera.WorldToViewportPoint(Camera, ...)
-    return newVector2(a.X, a.Y), b, a.Z
+    local a,b = Camera:WorldToViewportPoint(...)
+    return newVector2(a.X,a.Y), b, a.Z
 end
 
 --// Create ESP for a player
 local function createEsp(player)
-    if player == LocalPlayer then return end
-    if espCache[player] then return end
+    if player == LocalPlayer or espCache[player] then return end
 
     local drawings = {}
-
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 0.4
     drawings.box.Filled = false
@@ -59,90 +52,89 @@ end
 
 --// Remove ESP for one player
 local function removeEsp(player)
-    if rawget(espCache, player) then
-        for _, drawing in next, espCache[player] do
+    if espCache[player] then
+        for _, drawing in pairs(espCache[player]) do
             drawing:Remove()
         end
         espCache[player] = nil
     end
 end
 
---// Destroy all ESP drawings (cleanup)
+--// Destroy all ESP
 local function destroyAllEsp()
     for player, drawings in pairs(espCache) do
-        for _, drawing in next, drawings do
+        for _, drawing in pairs(drawings) do
             drawing:Remove()
         end
         espCache[player] = nil
     end
-    print("[ESP] All ESP boxes destroyed.")
 end
 
---// Update ESP positions
-local function updateEsp(player, esp)
-    local character = player and player.Character
+--// Update ESP
+local function updateEsp(player, drawings)
+    local character = player.Character
     if character and character:GetModelCFrame() then
         local cframe = character:GetModelCFrame()
         local position, visible, depth = wtvp(cframe.Position)
-        esp.box.Visible = visible
-        esp.boxoutline.Visible = visible
+        drawings.box.Visible = visible
+        drawings.boxoutline.Visible = visible
 
         if visible then
-            local scaleFactor = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
-            local width, height = round(4 * scaleFactor, 5 * scaleFactor)
+            local scale = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
+            local width, height = round(4*scale, 5*scale)
             local x, y = round(position.X, position.Y)
 
-            esp.box.Size = newVector2(width, height)
-            esp.box.Position = newVector2(round(x - width / 2, y - height / 2))
-            esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
+            drawings.box.Size = newVector2(width,height)
+            drawings.box.Position = newVector2(x-width/2, y-height/2)
+            drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
 
-            esp.boxoutline.Size = esp.box.Size
-            esp.boxoutline.Position = esp.box.Position
+            drawings.boxoutline.Size = drawings.box.Size
+            drawings.boxoutline.Position = drawings.box.Position
         end
     else
-        esp.box.Visible = false
-        esp.boxoutline.Visible = false
+        drawings.box.Visible = false
+        drawings.boxoutline.Visible = false
     end
 end
 
---// Toggle function for UI
-function ToggleBoxESP(Value)
-    espEnabled = Value
-    if espEnabled then
-        -- Create ESP for all current players
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                createEsp(player)
-            end
-        end
-        print("[ESP] Box ESP enabled.")
-    else
-        -- Remove all ESPs
-        destroyAllEsp()
-        print("[ESP] Box ESP disabled.")
-    end
-end
-
---// Main update loop
+--// Main loop
 RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
     if not espEnabled then return end
-    for player, drawings in next, espCache do
-        if settings.teamcheck and player.Team == LocalPlayer.Team then
-            continue
-        end
+    for player, drawings in pairs(espCache) do
+        if settings.teamcheck and player.Team == LocalPlayer.Team then continue end
         if drawings and player ~= LocalPlayer then
             updateEsp(player, drawings)
         end
     end
 end)
 
---// Player join/remove handling
+--// Player added/removed
 Players.PlayerAdded:Connect(function(player)
-    if espEnabled then
-        createEsp(player)
-    end
+    if espEnabled then createEsp(player) end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
+
+--// Toggle function (self-contained)
+local function ToggleESP(Value)
+    espEnabled = Value
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            createEsp(player)
+        end
+    else
+        destroyAllEsp()
+    end
+end
+
+--// GUI example (replace LeftGroupBox with your GUI container)
+LeftGroupBox:AddToggle('espbox', {
+    Text = 'Enable Box ESP',
+    Default = false,
+    Tooltip = 'Toggles Box ESP visibility',
+    Callback = function(Value)
+        ToggleESP(Value)
+    end
+})
