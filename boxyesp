@@ -142,7 +142,8 @@ local function ToggleESP(Value)
 end
 
 --// GUI Elements - Uses the BoxESPBox variable from main script
-if BoxESPBox then
+local BoxESPBox = Tabs.Visuals:AddLeftGroupbox('Player Box ESP')
+
     BoxESPBox:AddToggle('espbox', {
         Text = 'Enable Box ESP',
         Default = false,
