@@ -1,33 +1,32 @@
--- settings
+-- // SETTINGS
 local settings = {
     defaultcolor = Color3.fromRGB(255, 0, 0),
     teamcheck = false,
     teamcolor = true
 }
 
--- services
-local runService = game:GetService("RunService")
-local players = game:GetService("Players")
+-- // SERVICES
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- variables
-local localPlayer = players.LocalPlayer
-local camera = workspace.CurrentCamera
+-- // GLOBALS
+getgenv().ESP_RUNNING = true
+getgenv().ESP_CACHE = getgenv().ESP_CACHE or {}
+getgenv().ESP_CONNECTION = getgenv().ESP_CONNECTION
 
--- globals
-getgenv().espEnabled = true
-getgenv().espCache = getgenv().espCache or {}
-
--- helper functions
+-- // HELPERS
 local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
 local tan, rad = math.tan, math.rad
-local round = function(...) local a = {}; for i,v in next, table.pack(...) do a[i] = math.round(v); end return unpack(a); end
-local wtvp = function(...) local a,b = camera:WorldToViewportPoint(...); return newVector2(a.X,a.Y), b, a.Z end
+local function round(...) local a = {}; for i, v in next, table.pack(...) do a[i] = math.round(v) end; return unpack(a) end
+local function wtvp(...) local a, b = Camera:WorldToViewportPoint(...); return newVector2(a.X, a.Y), b, a.Z end
 
--- 🟩 Create ESP for player
+-- // CREATE ESP
 local function createEsp(player)
-    if getgenv().espCache[player] or player == localPlayer then return end
-
+    if getgenv().ESP_CACHE[player] or player == LocalPlayer then return end
     local drawings = {}
+
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 0.4
     drawings.box.Filled = false
@@ -35,91 +34,102 @@ local function createEsp(player)
     drawings.box.Visible = false
     drawings.box.ZIndex = 2
 
-    drawings.boxoutline = newDrawing("Square")
-    drawings.boxoutline.Thickness = 0
-    drawings.boxoutline.Filled = false
-    drawings.boxoutline.Color = newColor3()
-    drawings.boxoutline.Visible = false
-    drawings.boxoutline.ZIndex = 1
+    drawings.outline = newDrawing("Square")
+    drawings.outline.Thickness = 1
+    drawings.outline.Filled = false
+    drawings.outline.Color = Color3.new(0, 0, 0)
+    drawings.outline.Visible = false
+    drawings.outline.ZIndex = 1
 
-    getgenv().espCache[player] = drawings
+    getgenv().ESP_CACHE[player] = drawings
 end
 
--- 🟥 Remove ESP for one player
+-- // REMOVE ONE PLAYER ESP
 local function removeEsp(player)
-    if getgenv().espCache[player] then
-        for _, drawing in next, getgenv().espCache[player] do
-            drawing:Remove()
+    local drawings = getgenv().ESP_CACHE[player]
+    if drawings then
+        for _, d in pairs(drawings) do
+            d.Visible = false
+            d:Remove()
         end
-        getgenv().espCache[player] = nil
+        getgenv().ESP_CACHE[player] = nil
     end
 end
 
--- 🧹 Destroy all ESPs (global)
+-- // DESTROY ALL
 getgenv().DestroyAllEsp = function()
-    getgenv().espEnabled = false
-    for _, drawings in next, getgenv().espCache do
-        for _, drawing in next, drawings do
-            drawing:Remove()
+    getgenv().ESP_RUNNING = false
+
+    if getgenv().ESP_CONNECTION then
+        getgenv().ESP_CONNECTION:Disconnect()
+        getgenv().ESP_CONNECTION = nil
+    end
+
+    for player, drawings in pairs(getgenv().ESP_CACHE) do
+        for _, d in pairs(drawings) do
+            pcall(function() d.Visible = false d:Remove() end)
         end
+        getgenv().ESP_CACHE[player] = nil
     end
-    getgenv().espCache = {}
-    if getgenv().espConnection then
-        getgenv().espConnection:Disconnect()
-        getgenv().espConnection = nil
-    end
-    print("[ESP] Disabled and all drawings removed.")
+
+    print("[ESP] Fully cleaned up.")
 end
 
--- 🔁 Update ESP for player
+-- // UPDATE ESP
 local function updateEsp(player, esp)
-    local character = player and player.Character
-    if character then
-        local cframe = character:GetModelCFrame()
-        local position, visible, depth = wtvp(cframe.Position)
-        esp.box.Visible = visible
-        esp.boxoutline.Visible = visible
-
-        if visible then
-            local scaleFactor = 1 / (depth * tan(rad(camera.FieldOfView / 2)) * 2) * 1000
-            local width, height = round(4 * scaleFactor, 5 * scaleFactor)
-            local x, y = round(position.X, position.Y)
-
-            esp.box.Size = newVector2(width, height)
-            esp.box.Position = newVector2(x - width / 2, y - height / 2)
-            esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
-
-            esp.boxoutline.Size = esp.box.Size
-            esp.boxoutline.Position = esp.box.Position
-        end
-    else
+    local char = player.Character
+    if not char or not char:GetModelCFrame() then
         esp.box.Visible = false
-        esp.boxoutline.Visible = false
+        esp.outline.Visible = false
+        return
+    end
+
+    local cf = char:GetModelCFrame()
+    local pos, visible, depth = wtvp(cf.Position)
+    if not visible then
+        esp.box.Visible = false
+        esp.outline.Visible = false
+        return
+    end
+
+    local scale = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
+    local width, height = round(4 * scale, 5 * scale)
+    local x, y = round(pos.X, pos.Y)
+
+    esp.box.Size = newVector2(width, height)
+    esp.box.Position = newVector2(x - width / 2, y - height / 2)
+    esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
+    esp.box.Visible = true
+
+    esp.outline.Size = esp.box.Size
+    esp.outline.Position = esp.box.Position
+    esp.outline.Visible = true
+end
+
+-- // INIT
+for _, plr in pairs(Players:GetPlayers()) do
+    if plr ~= LocalPlayer then
+        createEsp(plr)
     end
 end
 
--- 🧩 Setup ESP loop
-for _, player in next, players:GetPlayers() do
-    if player ~= localPlayer then
-        createEsp(player)
-    end
-end
-
-players.PlayerAdded:Connect(function(player)
-    if getgenv().espEnabled then createEsp(player) end
+Players.PlayerAdded:Connect(function(p)
+    if getgenv().ESP_RUNNING then createEsp(p) end
 end)
 
-players.PlayerRemoving:Connect(function(player)
-    removeEsp(player)
+Players.PlayerRemoving:Connect(function(p)
+    removeEsp(p)
 end)
 
-getgenv().espConnection = runService.RenderStepped:Connect(function()
-    if not getgenv().espEnabled then return end
-    for player, drawings in next, getgenv().espCache do
-        if settings.teamcheck and player.Team == localPlayer.Team then
+-- // MAIN LOOP
+getgenv().ESP_CONNECTION = RunService.RenderStepped:Connect(function()
+    if not getgenv().ESP_RUNNING then return end
+
+    for player, drawings in pairs(getgenv().ESP_CACHE) do
+        if settings.teamcheck and player.Team == LocalPlayer.Team then
             continue
         end
-        if drawings and player ~= localPlayer then
+        if drawings and player ~= LocalPlayer then
             updateEsp(player, drawings)
         end
     end
