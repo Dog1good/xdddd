@@ -75,7 +75,6 @@ local function destroyAllEsp()
         end
         espCache[player] = nil
     end
-    print("[ESP] All ESP boxes destroyed.")
 end
 
 --// Update ESP positions
@@ -146,7 +145,6 @@ BoxESPBox:AddToggle('espbox', {
                     createEsp(player)
                 end
             end
-            print("[ESP] Box ESP enabled.")
         else
             -- Destroy all ESPs
             destroyAllEsp()
