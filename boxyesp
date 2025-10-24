@@ -75,6 +75,7 @@ local function destroyAllEsp()
         end
         espCache[player] = nil
     end
+    print("[ESP] All ESP boxes destroyed.")
 end
 
 --// Update ESP positions
@@ -104,7 +105,7 @@ local function updateEsp(player, esp)
     end
 end
 
---// ====== ADD ToggleBoxESP HERE ======
+--// Toggle function for UI
 function ToggleBoxESP(Value)
     espEnabled = Value
     if espEnabled then
@@ -114,14 +115,15 @@ function ToggleBoxESP(Value)
                 createEsp(player)
             end
         end
+        print("[ESP] Box ESP enabled.")
     else
         -- Remove all ESPs
         destroyAllEsp()
+        print("[ESP] Box ESP disabled.")
     end
 end
---// ====== END ToggleBoxESP ======
 
---// Main update loop (runs only when enabled)
+--// Main update loop
 RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
     if not espEnabled then return end
     for player, drawings in next, espCache do
@@ -134,14 +136,13 @@ RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, fu
     end
 end)
 
---// Add player ESP when player joins
+--// Player join/remove handling
 Players.PlayerAdded:Connect(function(player)
     if espEnabled then
         createEsp(player)
     end
 end)
 
---// Remove player ESP when player leaves
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
