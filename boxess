@@ -1,0 +1,176 @@
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--// Settings
+local settings = {
+    defaultcolor = Color3.fromRGB(255, 0, 0),
+    teamcheck = false,
+    teamcolor = true
+}
+
+--// Variables
+local espEnabled = false
+local espCache = {}
+
+--// Helper functions
+local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
+local tan, rad = math.tan, math.rad
+local round = function(...)
+    local a = {}
+    for i,v in next, table.pack(...) do a[i] = math.round(v) end
+    return unpack(a)
+end
+local wtvp = function(...)
+    local a,b = Camera:WorldToViewportPoint(...)
+    return newVector2(a.X,a.Y), b, a.Z
+end
+
+--// Create ESP
+local function createEsp(player)
+    if player == LocalPlayer or espCache[player] then return end
+    local drawings = {}
+    drawings.box = newDrawing("Square")
+    drawings.box.Thickness = 1
+    drawings.box.Filled = false
+    drawings.box.Color = settings.defaultcolor
+    drawings.box.Visible = false
+    drawings.box.ZIndex = 2
+
+    drawings.boxoutline = newDrawing("Square")
+    drawings.boxoutline.Thickness = 3
+    drawings.boxoutline.Filled = false
+    drawings.boxoutline.Color = newColor3()
+    drawings.boxoutline.Visible = false
+    drawings.boxoutline.ZIndex = 1
+
+    espCache[player] = drawings
+end
+
+--// Remove ESP
+local function removeEsp(player)
+    if espCache[player] then
+        for _, drawing in pairs(espCache[player]) do
+            drawing:Remove()
+        end
+        espCache[player] = nil
+    end
+end
+
+--// Destroy all ESP
+local function destroyAllEsp()
+    for player, drawings in pairs(espCache) do
+        for _, drawing in pairs(drawings) do
+            drawing:Remove()
+        end
+    end
+    espCache = {}
+end
+
+--// Update ESP
+local function updateEsp(player, drawings)
+    local character = player.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    
+    if humanoidRootPart and humanoid and humanoid.Health > 0 then
+        local position, visible, depth = wtvp(humanoidRootPart.Position)
+        drawings.box.Visible = visible
+        drawings.boxoutline.Visible = visible
+
+        if visible then
+            local scale = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
+            local width, height = round(4 * scale, 5 * scale)
+            local x, y = round(position.X, position.Y)
+
+            drawings.box.Size = newVector2(width, height)
+            drawings.box.Position = newVector2(x - width/2, y - height/2)
+            drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
+
+            drawings.boxoutline.Size = drawings.box.Size
+            drawings.boxoutline.Position = drawings.box.Position
+        end
+    else
+        drawings.box.Visible = false
+        drawings.boxoutline.Visible = false
+    end
+end
+
+--// Main loop
+RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
+    if not espEnabled then return end
+    for player, drawings in pairs(espCache) do
+        if player.Parent and player ~= LocalPlayer then
+            if settings.teamcheck and player.Team == LocalPlayer.Team then 
+                drawings.box.Visible = false
+                drawings.boxoutline.Visible = false
+                continue 
+            end
+            updateEsp(player, drawings)
+        end
+    end
+end)
+
+--// Player connections
+Players.PlayerAdded:Connect(function(player)
+    if espEnabled then 
+        createEsp(player) 
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeEsp(player)
+end)
+
+--// Toggle function
+local function ToggleESP(Value)
+    espEnabled = Value
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createEsp(player)
+            end
+        end
+    else
+        destroyAllEsp()
+    end
+end
+
+--// GUI Elements (Add these to your LeftGroupBox or wherever)
+LeftGroupBox:AddToggle('espbox', {
+    Text = 'Enable Box ESP',
+    Default = false,
+    Tooltip = 'Toggles Box ESP visibility',
+    Callback = function(Value)
+        ToggleESP(Value)
+    end
+})
+
+LeftGroupBox:AddToggle('teamcheck', {
+    Text = 'Team Check',
+    Default = false,
+    Tooltip = 'Hide teammates ESP',
+    Callback = function(Value)
+        settings.teamcheck = Value
+    end
+})
+
+LeftGroupBox:AddToggle('teamcolor', {
+    Text = 'Use Team Colors',
+    Default = true,
+    Tooltip = 'Changes ESP color to player team color',
+    Callback = function(Value)
+        settings.teamcolor = Value
+    end
+})
+
+LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
+    Default = settings.defaultcolor,
+    Title = 'Pick a color',
+    Transparency = 0,
+    Callback = function(Value)
+        settings.defaultcolor = Value
+    end
+})
