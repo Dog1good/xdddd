@@ -131,7 +131,7 @@ end
 
 --// === GUI ===
 -- Replace `LeftGroupBox` with your GUI container variable
-local LeftGroupBox = LeftGroupBox or error("LeftGroupBox GUI container not found!")
+local LeftGroupBox = LeftGroupBox("LeftGroupBox GUI container not found!")
 
 LeftGroupBox:AddToggle('espbox', {
     Text = 'Enable Box ESP',
