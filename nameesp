@@ -1,0 +1,111 @@
+
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+Debris = game:GetService("Debris")  -- For cleanup
+LocalPlayer = Players.LocalPlayer
+
+displayOption = 'DisplayName'  -- Default display option
+nameTagESPEnabled = false  -- Default for the name tag ESP toggle
+
+-- Function to create a name tag for a player
+function CreateNameTag(player)
+    -- Skip the local player
+    if player == LocalPlayer then return end
+
+    local character = player.Character or player.CharacterAdded:Wait()
+    local head = character:WaitForChild("Head")
+
+    -- Create BillboardGui and TextLabel for the name tag
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Parent = character
+    billboardGui.Size = UDim2.new(0, 100, 0, 30)  -- Adjust the size for the name tag
+    billboardGui.AlwaysOnTop = true
+    billboardGui.Adornee = head
+    billboardGui.StudsOffset = Vector3.new(0, 6, 0)  -- Adjust position
+
+    local nameTag = Instance.new("TextLabel")
+    nameTag.Parent = billboardGui
+    nameTag.Size = UDim2.new(1, 0, 1, 0)  -- Full size of the BillboardGui
+    nameTag.BackgroundTransparency = 1
+    nameTag.TextColor3 = Color3.new(1, 1, 1)  -- White text color
+    nameTag.TextStrokeTransparency = 0.6  -- Adjust outline visibility
+    nameTag.TextStrokeColor3 = Color3.new(0, 0, 0)  -- Black stroke for visibility
+    nameTag.TextSize = 10  -- Smaller base text size
+
+    -- Set the name text based on the selected option
+    if displayOption == "Username" then
+        nameTag.Text = player.Name  -- Display the player's username
+    else
+        nameTag.Text = player.DisplayName  -- Display the player's display name
+    end
+
+    -- Cleanup when the player leaves
+    Debris:AddItem(billboardGui, 5)  -- Automatically cleanup after 5 seconds
+end
+
+-- Function to remove name tags
+function RemoveNameTags()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            local character = player.Character
+            local billboardGui = character:FindFirstChildOfClass("BillboardGui")
+            if billboardGui then
+                -- Cleanup with Debris service
+                Debris:AddItem(billboardGui, 0)
+            end
+        end
+    end
+end
+
+-- Add the toggle to enable or disable the Name Tag ESP
+LeftGroupBox:AddToggle('MyToggle', {
+    Text = 'Enable Name Tag ESP',
+    Default = false,  -- Default value (true / false)
+    Tooltip = 'Toggles the name tag ESP visibility.',
+    Callback = function(Value)
+        nameTagESPEnabled = Value
+        if nameTagESPEnabled then
+            -- Update name tags immediately if ESP is enabled
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateNameTag(player)
+                end
+            end
+        else
+            -- If ESP is disabled, remove all name tags
+            RemoveNameTags()
+        end
+    end
+})
+
+-- Add the dropdown for selecting between Username or DisplayName
+LeftGroupBox:AddDropdown('NameDisplayOption', {
+    Values = { 'DisplayName', 'Username' },
+    Default = 1,  -- Default to "Username"
+    Multi = false, -- Single selection only
+    Text = 'Name Display Option',
+    Tooltip = 'Choose whether to display the player\'s Username or DisplayName',
+    Callback = function(Value)
+        displayOption = Value  -- Update the display option based on dropdown selection
+        if nameTagESPEnabled then
+            -- Reapply name tags immediately when the dropdown value changes
+            RemoveNameTags()  -- Remove existing name tags
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateNameTag(player)
+                end
+            end
+        end
+    end
+})
+
+-- Periodically update name tags every heartbeat (for new players)
+RunService.Heartbeat:Connect(function()
+    if nameTagESPEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and not player.Character:FindFirstChildOfClass("BillboardGui") then
+                CreateNameTag(player)
+            end
+        end
+    end
+end)
