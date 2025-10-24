@@ -1,15 +1,23 @@
--- Only run once
+-- ========================================
+-- BOX ESP SCRIPT (Fully Toggleable)
+-- ========================================
+
+-- Prevent multiple loads
 if getgenv().BOXESP_LOADED then return end
 getgenv().BOXESP_LOADED = true
 
 -- SERVICES
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- SETTINGS
-local settings = { defaultcolor = Color3.fromRGB(255,0,0), teamcheck = false, teamcolor = true }
+local settings = {
+    defaultcolor = Color3.fromRGB(255,0,0),
+    teamcheck = false,
+    teamcolor = true
+}
 
 -- GLOBALS
 getgenv().ESP_CACHE = getgenv().ESP_CACHE or {}
@@ -18,58 +26,81 @@ getgenv().ESP_ENABLED = getgenv().ESP_ENABLED or false
 -- HELPERS
 local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
 local tan, rad = math.tan, math.rad
-local function round(...) local a={}; for i,v in next, table.pack(...) do a[i]=math.round(v); end return unpack(a); end
-local function wtvp(...) local a,b=Camera:WorldToViewportPoint(...); return newVector2(a.X,a.Y),b,a.Z end
+local function round(...)
+    local a = {}
+    for i,v in next, table.pack(...) do a[i] = math.round(v) end
+    return unpack(a)
+end
+local function wtvp(...)
+    local a,b = Camera:WorldToViewportPoint(...)
+    return newVector2(a.X,a.Y), b, a.Z
+end
 
 -- CREATE ESP
 local function createEsp(player)
-    if player==LocalPlayer or getgenv().ESP_CACHE[player] then return end
+    if player == LocalPlayer or getgenv().ESP_CACHE[player] then return end
+
     local drawings = {}
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 0.4
     drawings.box.Filled = false
     drawings.box.Color = settings.defaultcolor
-    drawings.box.Visible = false
+    drawings.box.Visible = getgenv().ESP_ENABLED
     drawings.box.ZIndex = 2
 
     drawings.outline = newDrawing("Square")
     drawings.outline.Thickness = 1
     drawings.outline.Filled = false
     drawings.outline.Color = Color3.new(0,0,0)
-    drawings.outline.Visible = false
+    drawings.outline.Visible = getgenv().ESP_ENABLED
     drawings.outline.ZIndex = 1
 
     getgenv().ESP_CACHE[player] = drawings
 end
 
--- REMOVE ESP
+-- REMOVE ESP FOR PLAYER
 local function removeEsp(player)
     local drawings = getgenv().ESP_CACHE[player]
     if drawings then
         for _, d in pairs(drawings) do
-            pcall(function() d.Visible=false; d:Remove() end)
+            pcall(function()
+                d.Visible = false
+                d:Remove()
+            end)
         end
         getgenv().ESP_CACHE[player] = nil
     end
 end
 
--- DESTROY ALL (just hide & remove drawings, do not disconnect loop)
+-- DESTROY ALL ESP (clear all drawings, keep cache empty)
 getgenv().DestroyAllEsp = function()
     for player, drawings in pairs(getgenv().ESP_CACHE) do
         for _, d in pairs(drawings) do
-            pcall(function() d.Visible=false; d:Remove() end)
+            pcall(function()
+                d.Visible = false
+                d:Remove()
+            end)
         end
-        getgenv().ESP_CACHE[player] = nil
     end
+    getgenv().ESP_CACHE = {}
 end
 
--- UPDATE ESP
+-- UPDATE ESP DRAWINGS
 local function updateEsp(player, drawings)
     local char = player.Character
-    if not char or not char:GetModelCFrame() then drawings.box.Visible=false; drawings.outline.Visible=false; return end
+    if not char or not char:GetModelCFrame() then
+        drawings.box.Visible = false
+        drawings.outline.Visible = false
+        return
+    end
+
     local cf = char:GetModelCFrame()
     local pos, visible, depth = wtvp(cf.Position)
-    if not visible then drawings.box.Visible=false; drawings.outline.Visible=false; return end
+    if not visible then
+        drawings.box.Visible = false
+        drawings.outline.Visible = false
+        return
+    end
 
     local scale = 1 / (depth * tan(rad(Camera.FieldOfView/2)) * 2) * 1000
     local width, height = round(4*scale, 5*scale)
@@ -85,23 +116,56 @@ local function updateEsp(player, drawings)
     drawings.outline.Visible = getgenv().ESP_ENABLED
 end
 
--- INIT
-for _, p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then createEsp(p) end end
-Players.PlayerAdded:Connect(function(p) createEsp(p) end)
-Players.PlayerRemoving:Connect(function(p) removeEsp(p) end)
+-- INITIALIZE ESP FOR EXISTING PLAYERS
+for _, p in pairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then
+        createEsp(p)
+    end
+end
 
--- MAIN LOOP (always connected)
+-- CONNECT PLAYER ADDED / REMOVED
+Players.PlayerAdded:Connect(function(p)
+    createEsp(p)
+end)
+Players.PlayerRemoving:Connect(function(p)
+    removeEsp(p)
+end)
+
+-- RENDER LOOP (always connected)
 RunService.RenderStepped:Connect(function()
     if not getgenv().ESP_ENABLED then
-        for player, drawings in pairs(getgenv().ESP_CACHE) do
-            drawings.box.Visible=false
-            drawings.outline.Visible=false
+        -- hide all ESP if disabled
+        for _, drawings in pairs(getgenv().ESP_CACHE) do
+            drawings.box.Visible = false
+            drawings.outline.Visible = false
         end
         return
     end
 
+    -- update ESP for each player
     for player, drawings in pairs(getgenv().ESP_CACHE) do
-        if settings.teamcheck and player.Team==LocalPlayer.Team then continue end
-        if drawings and player~=LocalPlayer then updateEsp(player, drawings) end
+        if settings.teamcheck and player.Team == LocalPlayer.Team then continue end
+        if drawings and player ~= LocalPlayer then
+            updateEsp(player, drawings)
+        end
     end
 end)
+
+-- TOGGLE FUNCTION (can be called from GUI)
+function ToggleBoxESP(Value)
+    getgenv().ESP_ENABLED = Value
+    if Value then
+        -- recreate ESP for any players missing from cache
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createEsp(player)
+            end
+        end
+    else
+        -- just hide all ESP (cache remains intact)
+        for _, drawings in pairs(getgenv().ESP_CACHE) do
+            drawings.box.Visible = false
+            drawings.outline.Visible = false
+        end
+    end
+end
