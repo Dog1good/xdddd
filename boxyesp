@@ -1,164 +1,103 @@
--- Box ESP Script (for GitHub)
--- Access this via loadstring
+-- settings
+local settings = {
+   defaultcolor = Color3.fromRGB(255,0,0),
+   teamcheck = false,
+   teamcolor = true
+};
 
--- Check if already running
-if _G.BoxESPRunning then
-    return
-end
-_G.BoxESPRunning = true
+-- services
+local runService = game:GetService("RunService");
+local players = game:GetService("Players");
 
--- Settings (controlled by UI)
-_G.BoxESPSettings = _G.BoxESPSettings or {
-    enabled = true,
-    boxColor = Color3.fromRGB(255, 0, 0),
-    fillEnabled = false,
-    fillColor = Color3.fromRGB(255, 0, 0),
-    fillTransparency = 0.5,
-    teamcheck = false,
-    teamcolor = false
-}
+-- variables
+local localPlayer = players.LocalPlayer;
+local camera = workspace.CurrentCamera;
 
--- Services
-local runService = game:GetService("RunService")
-local players = game:GetService("Players")
+-- functions
+local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new;
+local tan, rad = math.tan, math.rad;
+local round = function(...) local a = {}; for i,v in next, table.pack(...) do a[i] = math.round(v); end return unpack(a); end;
+local wtvp = function(...) local a, b = camera.WorldToViewportPoint(camera, ...) return newVector2(a.X, a.Y), b, a.Z end;
 
--- Variables
-local localPlayer = players.LocalPlayer
-local camera = workspace.CurrentCamera
-
--- Functions
-local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
-local tan, rad = math.tan, math.rad
-local round = function(...) 
-    local a = {} 
-    for i,v in next, table.pack(...) do 
-        a[i] = math.round(v) 
-    end 
-    return unpack(a) 
-end
-local wtvp = function(...) 
-    local a, b = camera.WorldToViewportPoint(camera, ...) 
-    return newVector2(a.X, a.Y), b, a.Z 
-end
-
-local espCache = {}
-
+local espCache = {};
 local function createEsp(player)
-    local drawings = {}
-    
-    -- Filled box
-    drawings.boxfill = newDrawing("Square")
-    drawings.boxfill.Thickness = 1
-    drawings.boxfill.Filled = true
-    drawings.boxfill.Color = _G.BoxESPSettings.fillColor
-    drawings.boxfill.Transparency = _G.BoxESPSettings.fillTransparency
-    drawings.boxfill.Visible = false
-    drawings.boxfill.ZIndex = 1
+   local drawings = {};
+   
+   drawings.box = newDrawing("Square");
+   drawings.box.Thickness = 0.4;
+   drawings.box.Filled = false;
+   drawings.box.Color = settings.defaultcolor;
+   drawings.box.Visible = false;
+   drawings.box.ZIndex = 2;
 
-    -- Main box
-    drawings.box = newDrawing("Square")
-    drawings.box.Thickness = 1
-    drawings.box.Filled = false
-    drawings.box.Color = _G.BoxESPSettings.boxColor
-    drawings.box.Visible = false
-    drawings.box.ZIndex = 3
+   drawings.boxoutline = newDrawing("Square");
+   drawings.boxoutline.Thickness = 0;
+   drawings.boxoutline.Filled = false;
+   drawings.boxoutline.Color = newColor3();
+   drawings.boxoutline.Visible = false;
+   drawings.boxoutline.ZIndex = 1;
 
-    -- Outline
-    drawings.boxoutline = newDrawing("Square")
-    drawings.boxoutline.Thickness = 3
-    drawings.boxoutline.Filled = false
-    drawings.boxoutline.Color = newColor3(0, 0, 0)
-    drawings.boxoutline.Visible = false
-    drawings.boxoutline.ZIndex = 2
-
-    espCache[player] = drawings
+   espCache[player] = drawings;
 end
 
 local function removeEsp(player)
-    if rawget(espCache, player) then
-        for _, drawing in next, espCache[player] do
-            drawing:Remove()
-        end
-        espCache[player] = nil
-    end
+   if rawget(espCache, player) then
+       for _, drawing in next, espCache[player] do
+           drawing:Remove();
+       end
+       espCache[player] = nil;
+   end
 end
 
 local function updateEsp(player, esp)
-    local character = player and player.Character
-    if character then
-        local cframe = character:GetModelCFrame()
-        local position, visible, depth = wtvp(cframe.Position)
-        
-        local shouldShow = visible and _G.BoxESPSettings.enabled
-        esp.box.Visible = shouldShow
-        esp.boxoutline.Visible = shouldShow
-        esp.boxfill.Visible = shouldShow and _G.BoxESPSettings.fillEnabled
+   local character = player and player.Character;
+   if character then
+       local cframe = character:GetModelCFrame();
+       local position, visible, depth = wtvp(cframe.Position);
+       esp.box.Visible = visible;
+       esp.boxoutline.Visible = visible;
 
-        if cframe and visible and _G.BoxESPSettings.enabled then
-            local scaleFactor = 1 / (depth * tan(rad(camera.FieldOfView / 2)) * 2) * 1000
-            local width, height = round(4 * scaleFactor, 5 * scaleFactor)
-            local x, y = round(position.X, position.Y)
+       if cframe and visible then
+           local scaleFactor = 1 / (depth * tan(rad(camera.FieldOfView / 2)) * 2) * 1000;
+           local width, height = round(4 * scaleFactor, 5 * scaleFactor);
+           local x, y = round(position.X, position.Y);
 
-            local boxColor = _G.BoxESPSettings.teamcolor and player.TeamColor.Color or _G.BoxESPSettings.boxColor
+           esp.box.Size = newVector2(width, height);
+           esp.box.Position = newVector2(round(x - width / 2, y - height / 2));
+           esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor;
 
-            -- Update box
-            esp.box.Size = newVector2(width, height)
-            esp.box.Position = newVector2(round(x - width / 2, y - height / 2))
-            esp.box.Color = boxColor
-
-            -- Update outline
-            esp.boxoutline.Size = esp.box.Size
-            esp.boxoutline.Position = esp.box.Position
-
-            -- Update fill
-            if _G.BoxESPSettings.fillEnabled then
-                esp.boxfill.Size = esp.box.Size
-                esp.boxfill.Position = esp.box.Position
-                esp.boxfill.Color = _G.BoxESPSettings.fillColor
-                esp.boxfill.Transparency = _G.BoxESPSettings.fillTransparency
-            end
-        end
-    else
-        esp.box.Visible = false
-        esp.boxoutline.Visible = false
-        esp.boxfill.Visible = false
-    end
+           esp.boxoutline.Size = esp.box.Size;
+           esp.boxoutline.Position = esp.box.Position;
+       end
+   else
+       esp.box.Visible = false;
+       esp.boxoutline.Visible = false;
+   end
 end
 
--- Initialize
+-- main
 for _, player in next, players:GetPlayers() do
-    if player ~= localPlayer then
-        createEsp(player)
-    end
+   if player ~= localPlayer then
+       createEsp(player);
+   end
 end
 
 players.PlayerAdded:Connect(function(player)
-    createEsp(player)
-end)
+   createEsp(player);
+end);
 
 players.PlayerRemoving:Connect(function(player)
-    removeEsp(player)
+   removeEsp(player);
 end)
 
--- Main loop
-runService:BindToRenderStep("BoxESP", Enum.RenderPriority.Camera.Value, function()
-    for player, drawings in next, espCache do
-        if _G.BoxESPSettings.teamcheck and player.Team == localPlayer.Team then
-            continue
-        end
+runService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
+   for player, drawings in next, espCache do
+       if settings.teamcheck and player.Team == localPlayer.Team then
+           continue;
+       end
 
-        if drawings and player ~= localPlayer then
-            updateEsp(player, drawings)
-        end
-    end
+       if drawings and player ~= localPlayer then
+           updateEsp(player, drawings);
+       end
+   end
 end)
-
--- Cleanup function
-_G.UnloadBoxESP = function()
-    for player, _ in pairs(espCache) do
-        removeEsp(player)
-    end
-    runService:UnbindFromRenderStep("BoxESP")
-    _G.BoxESPRunning = false
-    _G.UnloadBoxESP = nil
-end
