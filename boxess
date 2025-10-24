@@ -1,174 +1,158 @@
---// Services
+LeftGroupBox = Tabs.Visuals:AddLeftGroupbox('Cham Esp')
+
+-- The actual cham effect
 Players = game:GetService("Players")
 RunService = game:GetService("RunService")
 LocalPlayer = Players.LocalPlayer
-Camera = workspace.CurrentCamera
+highlightColor = Color3.fromRGB(0, 0, 255)  -- Default color for chams
 
---// Settings
-defaultcolor = Color3.fromRGB(255, 0, 0)
-teamcheck = false
-teamcolor = true
+-- Function to create a cham (highlight) effect for a player
+function CreateCham(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character:FindFirstChild("HumanoidRootPart") then return end
 
---// Variables
-espEnabled = false
-espCache = {}
+    -- Create the highlight object for the player's character
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ChamHighlight"
+    highlight.Parent = character
+    highlight.Adornee = character  -- Set the highlight target to the entire character
+    highlight.FillColor = highlightColor  -- Set color to chosen value
+    highlight.FillTransparency = 0.5  -- Make the highlight semi-transparent
+    highlight.OutlineTransparency = 1  -- Fully transparent outline (no outline)
 
---// Helper functions
-newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
-tan, rad = math.tan, math.rad
-round = function(...)
-    local a = {}
-    for i,v in next, table.pack(...) do a[i] = math.round(v) end
-    return unpack(a)
-end
-wtvp = function(...)
-    local a,b = Camera:WorldToViewportPoint(...)
-    return newVector2(a.X,a.Y), b, a.Z
+    -- Clean up when the character is removed
+    character:WaitForChild("HumanoidRootPart").AncestryChanged:Connect(function()
+        highlight:Destroy()  -- Remove the highlight when the player leaves or the character is destroyed
+    end)
 end
 
---// Create ESP
-function createEsp(player)
-    if player == LocalPlayer or espCache[player] then return end
-    local drawings = {}
-    drawings.box = newDrawing("Square")
-    drawings.box.Thickness = 1
-    drawings.box.Filled = false
-    drawings.box.Color = defaultcolor
-    drawings.box.Visible = false
-    drawings.box.ZIndex = 2
+-- UI Toggle for Chams
+LeftGroupBox:AddToggle('ChamsToggle', {
+    Text = 'Chams',
+    Default = false, -- Default value (true / false)
+    Tooltip = 'Toggles cham effect for players',
 
-    drawings.boxoutline = newDrawing("Square")
-    drawings.boxoutline.Thickness = 3
-    drawings.boxoutline.Filled = false
-    drawings.boxoutline.Color = newColor3()
-    drawings.boxoutline.Visible = false
-    drawings.boxoutline.ZIndex = 1
-
-    espCache[player] = drawings
-end
-
---// Remove ESP
-function removeEsp(player)
-    if espCache[player] then
-        for _, drawing in pairs(espCache[player]) do
-            drawing:Remove()
-        end
-        espCache[player] = nil
-    end
-end
-
---// Destroy all ESP
-function destroyAllEsp()
-    for player, drawings in pairs(espCache) do
-        for _, drawing in pairs(drawings) do
-            drawing:Remove()
+    Callback = function(Value)
+        _G.chams = Value
+        -- Apply or remove the cham effect based on the toggle state
+        if _G.chams then
+            -- Apply cham effect for players when enabled
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    CreateCham(player)
+                end
+            end
+        else
+            -- Remove cham effect for players when disabled
+            for _, player in pairs(Players:GetPlayers()) do
+                local character = player.Character
+                if character then
+                    local highlight = character:FindFirstChild("ChamHighlight")
+                    if highlight then
+                        highlight:Destroy()
+                    end
+                end
+            end
         end
     end
-    espCache = {}
-end
+})
 
---// Update ESP
-function updateEsp(player, drawings)
-    local character = player.Character
-    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    
-    if humanoidRootPart and humanoid and humanoid.Health > 0 then
-        local position, visible, depth = wtvp(humanoidRootPart.Position)
-        drawings.box.Visible = visible
-        drawings.boxoutline.Visible = visible
+-- Add color picker UI for Chams
+LeftGroupBox:AddLabel('Color'):AddColorPicker('ColorPicker', {
+    Default = Color3.fromRGB(0, 0, 255), -- White color (default)
+    Title = 'Cham Color', -- Title of the color picker
+    Transparency = 0, -- Disables transparency changing for this color picker
 
-        if visible then
-            local scale = 1 / (depth * tan(rad(Camera.FieldOfView / 2)) * 2) * 1000
-            local width, height = round(4 * scale, 5 * scale)
-            local x, y = round(position.X, position.Y)
-
-            drawings.box.Size = newVector2(width, height)
-            drawings.box.Position = newVector2(x - width/2, y - height/2)
-            drawings.box.Color = teamcolor and player.TeamColor.Color or defaultcolor
-
-            drawings.boxoutline.Size = drawings.box.Size
-            drawings.boxoutline.Position = drawings.box.Position
-        end
-    else
-        drawings.box.Visible = false
-        drawings.boxoutline.Visible = false
-    end
-end
-
---// Toggle function
-function ToggleESP(Value)
-    espEnabled = Value
-    if espEnabled then
+    Callback = function(Value)
+        highlightColor = Value  -- Update the highlight color when the user picks a color
+        -- Update the cham color for existing players
         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                createEsp(player)
+            if player ~= LocalPlayer and player.Character then
+                local highlight = player.Character:FindFirstChild("ChamHighlight")
+                if highlight then
+                    highlight.FillColor = highlightColor  -- Apply the new color to the existing highlight
+                end
             end
         end
-    else
-        destroyAllEsp()
-    end
-end
-
---// GUI Elements
-BoxESPBox:AddToggle('espbox', {
-    Text = 'Enable Box ESP',
-    Default = false,
-    Tooltip = 'Toggles Box ESP visibility',
-    Callback = function(Value)
-        ToggleESP(Value)
     end
 })
 
-BoxESPBox:AddToggle('teamcheck', {
-    Text = 'Team Check',
-    Default = false,
-    Tooltip = 'Hide teammates ESP',
-    Callback = function(Value)
-        teamcheck = Value
-    end
-})
-
-BoxESPBox:AddToggle('teamcolor', {
-    Text = 'Use Team Colors',
-    Default = true,
-    Tooltip = 'Changes ESP color to player team color',
-    Callback = function(Value)
-        teamcolor = Value
-    end
-})
-
-BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
-    Default = defaultcolor,
-    Title = 'Pick a color',
-    Transparency = 0,
-    Callback = function(Value)
-        defaultcolor = Value
-    end
-})
-
---// Main loop
-RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
-    if not espEnabled then return end
-    for player, drawings in pairs(espCache) do
-        if player.Parent and player ~= LocalPlayer then
-            if teamcheck and player.Team == LocalPlayer.Team then 
-                drawings.box.Visible = false
-                drawings.boxoutline.Visible = false
-                continue 
-            end
-            updateEsp(player, drawings)
-        end
-    end
-end)
-
---// Player connections
+-- Handle player join to ensure chams are applied
 Players.PlayerAdded:Connect(function(player)
-    if espEnabled then 
-        createEsp(player) 
-    end
+    player.CharacterAdded:Connect(function(character)
+        -- Wait until the character's root part is available before applying chams
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        if _G.chams and player ~= LocalPlayer then
+            CreateCham(player)  -- Apply cham if enabled and not the local player
+        end
+    end)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    removeEsp(player)
+    -- Remove cham when player leaves
+    if player.Character then
+        local highlight = player.Character:FindFirstChild("ChamHighlight")
+        if highlight then
+            highlight:Destroy()
+        end
+    end
 end)
+
+-- Periodically update chams for players when enabled using RunService.Heartbeat
+RunService.Heartbeat:Connect(function()
+    if _G.chams then
+        -- Loop through all players and ensure chams are applied
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                -- Create cham if it doesn't exist for the player
+                local character = player.Character
+                if not character:FindFirstChild("ChamHighlight") then
+                    CreateCham(player)
+                end
+            end
+        end
+    else
+        -- Disable the cham effect if _G.chams is false
+        for _, player in pairs(Players:GetPlayers()) do
+            local character = player.Character
+            if character then
+                local highlight = character:FindFirstChild("ChamHighlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end)
+
+-- Ensure chams are applied to players who have respawned
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        -- In case a player respawns
+        if _G.chams and player ~= LocalPlayer then
+            local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            CreateCham(player)
+        end
+    end)
+end)
+
+-- Execute the toggle when the script is first run
+if _G.chams then
+    -- Enable the cham effect for players (not including local player)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            CreateCham(player)
+        end
+    end
+else
+    -- Disable the cham effect for all players
+    for _, player in pairs(Players:GetPlayers()) do
+        local character = player.Character
+        if character then
+            local highlight = character:FindFirstChild("ChamHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+    end
+end
