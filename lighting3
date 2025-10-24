@@ -1,0 +1,219 @@
+RightGroupBox = Tabs.Visuals:AddRightGroupbox('Ambience')
+
+    -- Place this script in LocalScript or StarterPlayer -> StarterPlayerScripts
+
+local lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local runService = game:GetService("RunService")
+local debris = game:GetService("Debris")
+
+-- Store original lighting settings and ClockTime
+if not _G.OriginalLightingSettings then
+    _G.OriginalLightingSettings = {
+        Ambient = lighting.Ambient,
+        OutdoorAmbient = lighting.OutdoorAmbient,
+        Brightness = lighting.Brightness,
+        ColorShift_Bottom = lighting.ColorShift_Bottom,
+        ColorShift_Top = lighting.ColorShift_Top,
+        FogColor = lighting.FogColor,
+        FogStart = lighting.FogStart,
+        FogEnd = lighting.FogEnd,
+        TimeOfDay = lighting.TimeOfDay,
+        Skybox = lighting:FindFirstChildOfClass("Sky"), -- Ensure no errors if skybox doesn't exist
+        ClockTime = lighting.ClockTime
+    }
+end
+
+-- Store the selected RGB colors for lighting
+local selectedAmbientColor = _G.OriginalLightingSettings.Ambient
+local selectedOutdoorAmbientColor = _G.OriginalLightingSettings.OutdoorAmbient
+local selectedColorShiftBottom = _G.OriginalLightingSettings.ColorShift_Bottom
+local selectedColorShiftTop = _G.OriginalLightingSettings.ColorShift_Top
+local selectedFogColor = _G.OriginalLightingSettings.FogColor
+
+-- Pre-store skybox asset ID to avoid repeated string literals
+local skyboxAssetID = "rbxassetid://1294489738"
+
+-- Add the toggle for the royal purple ambience
+RightGroupBox:AddToggle('AmbienceToggle', {
+    Text = 'Enable Custom Ambient Lighting',
+    Default = false, -- Default value (true / false)
+    Tooltip = 'Toggle to switch between original and custom ambient lighting',
+
+    Callback = function(Value)
+        if Value then
+            -- Apply the altered custom ambient lighting settings
+            lighting.Ambient = selectedAmbientColor
+            lighting.OutdoorAmbient = selectedOutdoorAmbientColor
+            lighting.Brightness = 2
+            lighting.ColorShift_Bottom = selectedColorShiftBottom
+            lighting.ColorShift_Top = selectedColorShiftTop
+            lighting.FogColor = selectedFogColor
+            lighting.FogStart = 0
+            lighting.FogEnd = 500
+            lighting.TimeOfDay = "18:00:00"
+
+            -- Set a custom skybox for the custom ambience
+            local skybox = lighting:FindFirstChildOfClass("Sky")
+            if not skybox then
+                skybox = Instance.new("Sky")
+                skybox.Parent = lighting
+            end
+            skybox.SkyboxBk = skyboxAssetID
+            skybox.SkyboxDn = skyboxAssetID
+            skybox.SkyboxFt = skyboxAssetID
+            skybox.SkyboxLf = skyboxAssetID
+            skybox.SkyboxRt = skyboxAssetID
+            skybox.SkyboxUp = skyboxAssetID
+
+            -- Set the flag to indicate that the lighting has been altered
+            _G.AmbienceToggled = true
+
+            -- Immediately set the time of day to the current slider value when toggle is enabled
+            lighting.ClockTime = _G.ClockTimeOverride or 17 -- Default to the slider value if set
+        else
+            -- Reset the lighting back to the original settings
+            lighting.Ambient = _G.OriginalLightingSettings.Ambient
+            lighting.OutdoorAmbient = _G.OriginalLightingSettings.OutdoorAmbient
+            lighting.Brightness = _G.OriginalLightingSettings.Brightness
+            lighting.ColorShift_Bottom = _G.OriginalLightingSettings.ColorShift_Bottom
+            lighting.ColorShift_Top = _G.OriginalLightingSettings.ColorShift_Top
+            lighting.FogColor = _G.OriginalLightingSettings.FogColor
+            lighting.FogStart = _G.OriginalLightingSettings.FogStart
+            lighting.FogEnd = _G.OriginalLightingSettings.FogEnd
+            lighting.TimeOfDay = _G.OriginalLightingSettings.TimeOfDay
+
+            -- Reset the skybox immediately (if it exists)
+            local sky = lighting:FindFirstChildOfClass("Sky")
+            if sky then
+                debris:AddItem(sky, 1) -- Use debris to clean up skybox instance
+            end
+
+            -- Restore the original skybox (if it exists)
+            if _G.OriginalLightingSettings.Skybox then
+                local originalSkybox = _G.OriginalLightingSettings.Skybox:Clone()
+                originalSkybox.Parent = lighting
+            end
+
+            -- Reset the flag to indicate the lighting has been restored
+            _G.AmbienceToggled = false
+        end
+    end
+})
+
+-- Add the slider to control brightness with max value set to 20
+RightGroupBox:AddSlider('BrightnessSlider', { 
+    Text = 'Brightness Control',
+    Default = 10,  -- Set initial brightness to 2 (adjust if needed)
+    Min = 0,
+    Max = 20,  -- Max brightness set to 20
+    Rounding = 1,
+    Compact = false,
+
+    Callback = function(Value)
+        -- Immediately change the lighting brightness live based on slider value
+        lighting.Brightness = Value
+    end
+})
+
+-- Add the slider to control fog end with max value set to 1000
+RightGroupBox:AddSlider('FogEndSlider', { 
+    Text = 'Fog End Control',
+    Default = 500,  -- Set initial fog end to 500 (adjust if needed)
+    Min = 100,
+    Max = 10000,  -- Max fog end set to 100000
+    Rounding = 0,
+    Compact = false,
+
+    Callback = function(Value)
+        lighting.FogEnd = Value
+    end
+})
+
+-- Add the slider to control the time of day
+RightGroupBox:AddSlider('TimeOfDaySlider', { 
+    Text = 'Time of Day Control',
+    Default = 17,  -- Set initial time to 12:00 (adjust if needed)
+    Min = 0,
+    Max = 24,  -- 24-hour format for time of day
+    Rounding = 1,
+    Compact = false,
+
+    Callback = function(Value)
+        -- Lock the time of day client-side by setting it
+        if _G.AmbienceToggled then
+            lighting.ClockTime = Value
+            -- Save the desired value so it stays fixed
+            _G.ClockTimeOverride = Value
+        end
+    end
+})
+
+-- Lock the server time cycle client-side and override server changes, only when toggle is active
+runService.Heartbeat:Connect(function()
+    if _G.AmbienceToggled and _G.ClockTimeOverride then
+        lighting.ClockTime = _G.ClockTimeOverride
+    end
+end)
+
+-- Add RGB color pickers for each lighting property
+RightGroupBox:AddLabel('Ambient Color Picker'):AddColorPicker('AmbientColorPicker', {
+    Default = Color3.fromRGB(0, 0, 255),  -- Default royal purple
+    Title = 'Select Ambient Color',
+    Transparency = 0,  -- Optional
+
+    Callback = function(Value)
+        selectedAmbientColor = Value
+        if _G.AmbienceToggled then
+            lighting.Ambient = selectedAmbientColor
+        end
+    end
+})
+
+RightGroupBox:AddLabel('Outdoor Ambient Color Picker'):AddColorPicker('OutdoorAmbientColorPicker', {
+    Default = Color3.fromRGB(0, 0, 255),  -- Default color
+    Title = 'Select Outdoor Ambient Color',
+
+    Callback = function(Value)
+        selectedOutdoorAmbientColor = Value
+        if _G.AmbienceToggled then
+            lighting.OutdoorAmbient = selectedOutdoorAmbientColor
+        end
+    end
+})
+
+RightGroupBox:AddLabel('Color Shift Bottom Picker'):AddColorPicker('ColorShiftBottomPicker', {
+    Default = Color3.fromRGB(0, 0, 255),  -- Default color
+    Title = 'Select Color Shift Bottom',
+
+    Callback = function(Value)
+        selectedColorShiftBottom = Value
+        if _G.AmbienceToggled then
+            lighting.ColorShift_Bottom = selectedColorShiftBottom
+        end
+    end
+})
+
+RightGroupBox:AddLabel('Color Shift Top Picker'):AddColorPicker('ColorShiftTopPicker', {
+    Default = Color3.fromRGB(0, 0, 255),  -- Default color
+    Title = 'Select Color Shift Top',
+
+    Callback = function(Value)
+        selectedColorShiftTop = Value
+        if _G.AmbienceToggled then
+            lighting.ColorShift_Top = selectedColorShiftTop
+        end
+    end
+})
+
+RightGroupBox:AddLabel('Fog Color Picker'):AddColorPicker('FogColorPicker', {
+    Default = Color3.fromRGB(0, 0, 255),  -- Default color
+    Title = 'Select Fog Color',
+
+    Callback = function(Value)
+        selectedFogColor = Value
+        if _G.AmbienceToggled then
+            lighting.FogColor = selectedFogColor
+        end
+    end
+})
