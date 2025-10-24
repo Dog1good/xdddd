@@ -2,12 +2,14 @@
 if getgenv().BOXESP_LOADED then return end
 getgenv().BOXESP_LOADED = true
 
--- SETTINGS
-local settings = { defaultcolor = Color3.fromRGB(255,0,0), teamcheck = false, teamcolor = true }
+-- SERVICES
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+
+-- SETTINGS
+local settings = { defaultcolor = Color3.fromRGB(255,0,0), teamcheck = false, teamcolor = true }
 
 -- GLOBALS
 getgenv().ESP_CACHE = getgenv().ESP_CACHE or {}
@@ -21,7 +23,7 @@ local function wtvp(...) local a,b=Camera:WorldToViewportPoint(...); return newV
 
 -- CREATE ESP
 local function createEsp(player)
-    if player == LocalPlayer or getgenv().ESP_CACHE[player] then return end
+    if player==LocalPlayer or getgenv().ESP_CACHE[player] then return end
     local drawings = {}
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 0.4
@@ -51,10 +53,8 @@ local function removeEsp(player)
     end
 end
 
--- DESTROY ALL
+-- DESTROY ALL (just hide & remove drawings, do not disconnect loop)
 getgenv().DestroyAllEsp = function()
-    getgenv().ESP_ENABLED = false
-    if getgenv().ESP_CONNECTION then getgenv().ESP_CONNECTION:Disconnect() getgenv().ESP_CONNECTION=nil end
     for player, drawings in pairs(getgenv().ESP_CACHE) do
         for _, d in pairs(drawings) do
             pcall(function() d.Visible=false; d:Remove() end)
@@ -78,21 +78,28 @@ local function updateEsp(player, drawings)
     drawings.box.Size = newVector2(width,height)
     drawings.box.Position = newVector2(x-width/2, y-height/2)
     drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
-    drawings.box.Visible = true
+    drawings.box.Visible = getgenv().ESP_ENABLED
 
     drawings.outline.Size = drawings.box.Size
     drawings.outline.Position = drawings.box.Position
-    drawings.outline.Visible = true
+    drawings.outline.Visible = getgenv().ESP_ENABLED
 end
 
 -- INIT
 for _, p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then createEsp(p) end end
-Players.PlayerAdded:Connect(function(p) if getgenv().ESP_ENABLED then createEsp(p) end end)
+Players.PlayerAdded:Connect(function(p) createEsp(p) end)
 Players.PlayerRemoving:Connect(function(p) removeEsp(p) end)
 
--- MAIN LOOP
-getgenv().ESP_CONNECTION = RunService.RenderStepped:Connect(function()
-    if not getgenv().ESP_ENABLED then return end
+-- MAIN LOOP (always connected)
+RunService.RenderStepped:Connect(function()
+    if not getgenv().ESP_ENABLED then
+        for player, drawings in pairs(getgenv().ESP_CACHE) do
+            drawings.box.Visible=false
+            drawings.outline.Visible=false
+        end
+        return
+    end
+
     for player, drawings in pairs(getgenv().ESP_CACHE) do
         if settings.teamcheck and player.Team==LocalPlayer.Team then continue end
         if drawings and player~=LocalPlayer then updateEsp(player, drawings) end
