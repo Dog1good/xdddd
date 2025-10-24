@@ -1,26 +1,3 @@
---// Library Setup (Add this at the beginning)
-local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
-local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
-local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
-
---// Create Window
-local Window = Library:CreateWindow({
-    Title = 'ESP Script',
-    Center = true,
-    AutoShow = true,
-    TabPadding = 8,
-    MenuFadeTime = 0.2
-})
-
---// Create Tab
-local Tabs = {
-    Main = Window:AddTab('ESP')
-}
-
---// Create Groupbox
-local LeftGroupBox = Tabs.Main:AddLeftGroupbox('ESP Settings')
-
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -136,7 +113,7 @@ RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, fu
     end
 end)
 
---// Player added/removed
+--// Player connections
 Players.PlayerAdded:Connect(function(player)
     if espEnabled then 
         createEsp(player) 
@@ -146,18 +123,6 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
-
---// Character added (for respawns)
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            wait(0.1) -- Small delay to ensure character loads
-            if espEnabled and not espCache[player] then
-                createEsp(player)
-            end
-        end)
-    end
-end
 
 --// Toggle function
 local function ToggleESP(Value)
@@ -173,9 +138,7 @@ local function ToggleESP(Value)
     end
 end
 
---// ===== GUI Setup =====
-
--- Main ESP toggle
+--// GUI Elements (Add these to your LeftGroupBox or wherever)
 LeftGroupBox:AddToggle('espbox', {
     Text = 'Enable Box ESP',
     Default = false,
@@ -185,7 +148,6 @@ LeftGroupBox:AddToggle('espbox', {
     end
 })
 
--- Team check toggle
 LeftGroupBox:AddToggle('teamcheck', {
     Text = 'Team Check',
     Default = false,
@@ -195,7 +157,6 @@ LeftGroupBox:AddToggle('teamcheck', {
     end
 })
 
--- Team color toggle
 LeftGroupBox:AddToggle('teamcolor', {
     Text = 'Use Team Colors',
     Default = true,
@@ -205,7 +166,6 @@ LeftGroupBox:AddToggle('teamcolor', {
     end
 })
 
--- Color picker
 LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
     Default = settings.defaultcolor,
     Title = 'Pick a color',
@@ -214,17 +174,3 @@ LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
         settings.defaultcolor = Value
     end
 })
-
---// Theme/Settings (Optional - adds theme manager and settings)
-local MenuGroup = Tabs.Main:AddRightGroupbox('Menu')
-MenuGroup:AddButton('Unload', function() Library:Unload() end)
-MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'End', NoUI = true, Text = 'Menu keybind' })
-
-Library.ToggleKeybind = Options.MenuKeybind
-
---// Watermark
-Library:SetWatermarkVisibility(true)
-Library:SetWatermark('ESP Script | ' .. os.date('%B %d, %Y'))
-
---// Init
-Library:Notify('ESP Script Loaded!', 3)
