@@ -1,39 +1,41 @@
 --// Services
-Players = game:GetService("Players")
-RunService = game:GetService("RunService")
-LocalPlayer = Players.LocalPlayer
-Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 --// Settings
-defaultcolor = Color3.fromRGB(255, 0, 0)
-teamcheck = false
-teamcolor = true
+local settings = {
+    defaultcolor = Color3.fromRGB(255, 0, 0),
+    teamcheck = false,
+    teamcolor = true
+}
 
 --// Variables
-espEnabled = false
-espCache = {}
+local espEnabled = false
+local espCache = {}
 
 --// Helper functions
-newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
-tan, rad = math.tan, math.rad
-round = function(...)
+local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
+local tan, rad = math.tan, math.rad
+local round = function(...)
     local a = {}
     for i,v in next, table.pack(...) do a[i] = math.round(v) end
     return unpack(a)
 end
-wtvp = function(...)
+local wtvp = function(...)
     local a,b = Camera:WorldToViewportPoint(...)
     return newVector2(a.X,a.Y), b, a.Z
 end
 
 --// Create ESP
-function createEsp(player)
+local function createEsp(player)
     if player == LocalPlayer or espCache[player] then return end
     local drawings = {}
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 1
     drawings.box.Filled = false
-    drawings.box.Color = defaultcolor
+    drawings.box.Color = settings.defaultcolor
     drawings.box.Visible = false
     drawings.box.ZIndex = 2
 
@@ -48,7 +50,7 @@ function createEsp(player)
 end
 
 --// Remove ESP
-function removeEsp(player)
+local function removeEsp(player)
     if espCache[player] then
         for _, drawing in pairs(espCache[player]) do
             drawing:Remove()
@@ -58,7 +60,7 @@ function removeEsp(player)
 end
 
 --// Destroy all ESP
-function destroyAllEsp()
+local function destroyAllEsp()
     for player, drawings in pairs(espCache) do
         for _, drawing in pairs(drawings) do
             drawing:Remove()
@@ -68,7 +70,7 @@ function destroyAllEsp()
 end
 
 --// Update ESP
-function updateEsp(player, drawings)
+local function updateEsp(player, drawings)
     local character = player.Character
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
     local humanoid = character and character:FindFirstChild("Humanoid")
@@ -85,7 +87,7 @@ function updateEsp(player, drawings)
 
             drawings.box.Size = newVector2(width, height)
             drawings.box.Position = newVector2(x - width/2, y - height/2)
-            drawings.box.Color = teamcolor and player.TeamColor.Color or defaultcolor
+            drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
 
             drawings.boxoutline.Size = drawings.box.Size
             drawings.boxoutline.Position = drawings.box.Position
@@ -96,63 +98,12 @@ function updateEsp(player, drawings)
     end
 end
 
---// Toggle function
-function ToggleESP(Value)
-    espEnabled = Value
-    if espEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                createEsp(player)
-            end
-        end
-    else
-        destroyAllEsp()
-    end
-end
-
---// GUI Elements
-BoxESPBox:AddToggle('espbox', {
-    Text = 'Enable Box ESP',
-    Default = false,
-    Tooltip = 'Toggles Box ESP visibility',
-    Callback = function(Value)
-        ToggleESP(Value)
-    end
-})
-
-BoxESPBox:AddToggle('teamcheck', {
-    Text = 'Team Check',
-    Default = false,
-    Tooltip = 'Hide teammates ESP',
-    Callback = function(Value)
-        teamcheck = Value
-    end
-})
-
-BoxESPBox:AddToggle('teamcolor', {
-    Text = 'Use Team Colors',
-    Default = true,
-    Tooltip = 'Changes ESP color to player team color',
-    Callback = function(Value)
-        teamcolor = Value
-    end
-})
-
-BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
-    Default = defaultcolor,
-    Title = 'Pick a color',
-    Transparency = 0,
-    Callback = function(Value)
-        defaultcolor = Value
-    end
-})
-
 --// Main loop
 RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
     if not espEnabled then return end
     for player, drawings in pairs(espCache) do
         if player.Parent and player ~= LocalPlayer then
-            if teamcheck and player.Team == LocalPlayer.Team then 
+            if settings.teamcheck and player.Team == LocalPlayer.Team then 
                 drawings.box.Visible = false
                 drawings.boxoutline.Visible = false
                 continue 
@@ -172,3 +123,54 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
+
+--// Toggle function
+local function ToggleESP(Value)
+    espEnabled = Value
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createEsp(player)
+            end
+        end
+    else
+        destroyAllEsp()
+    end
+end
+
+--// GUI Elements (Add these to your LeftGroupBox or wherever)
+LeftGroupBox:AddToggle('espbox', {
+    Text = 'Enable Box ESP',
+    Default = false,
+    Tooltip = 'Toggles Box ESP visibility',
+    Callback = function(Value)
+        ToggleESP(Value)
+    end
+})
+
+LeftGroupBox:AddToggle('teamcheck', {
+    Text = 'Team Check',
+    Default = false,
+    Tooltip = 'Hide teammates ESP',
+    Callback = function(Value)
+        settings.teamcheck = Value
+    end
+})
+
+LeftGroupBox:AddToggle('teamcolor', {
+    Text = 'Use Team Colors',
+    Default = true,
+    Tooltip = 'Changes ESP color to player team color',
+    Callback = function(Value)
+        settings.teamcolor = Value
+    end
+})
+
+LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
+    Default = settings.defaultcolor,
+    Title = 'Pick a color',
+    Transparency = 0,
+    Callback = function(Value)
+        settings.defaultcolor = Value
+    end
+})
