@@ -1,41 +1,39 @@
 --// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+LocalPlayer = Players.LocalPlayer
+Camera = workspace.CurrentCamera
 
 --// Settings
-local settings = {
-    defaultcolor = Color3.fromRGB(255, 0, 0),
-    teamcheck = false,
-    teamcolor = true
-}
+defaultcolor = Color3.fromRGB(255, 0, 0)
+teamcheck = false
+teamcolor = true
 
 --// Variables
-local espEnabled = false
-local espCache = {}
+espEnabled = false
+espCache = {}
 
 --// Helper functions
-local newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
-local tan, rad = math.tan, math.rad
-local round = function(...)
+newVector2, newColor3, newDrawing = Vector2.new, Color3.new, Drawing.new
+tan, rad = math.tan, math.rad
+round = function(...)
     local a = {}
     for i,v in next, table.pack(...) do a[i] = math.round(v) end
     return unpack(a)
 end
-local wtvp = function(...)
+wtvp = function(...)
     local a,b = Camera:WorldToViewportPoint(...)
     return newVector2(a.X,a.Y), b, a.Z
 end
 
 --// Create ESP
-local function createEsp(player)
+function createEsp(player)
     if player == LocalPlayer or espCache[player] then return end
     local drawings = {}
     drawings.box = newDrawing("Square")
     drawings.box.Thickness = 1
     drawings.box.Filled = false
-    drawings.box.Color = settings.defaultcolor
+    drawings.box.Color = defaultcolor
     drawings.box.Visible = false
     drawings.box.ZIndex = 2
 
@@ -50,7 +48,7 @@ local function createEsp(player)
 end
 
 --// Remove ESP
-local function removeEsp(player)
+function removeEsp(player)
     if espCache[player] then
         for _, drawing in pairs(espCache[player]) do
             drawing:Remove()
@@ -60,7 +58,7 @@ local function removeEsp(player)
 end
 
 --// Destroy all ESP
-local function destroyAllEsp()
+function destroyAllEsp()
     for player, drawings in pairs(espCache) do
         for _, drawing in pairs(drawings) do
             drawing:Remove()
@@ -70,7 +68,7 @@ local function destroyAllEsp()
 end
 
 --// Update ESP
-local function updateEsp(player, drawings)
+function updateEsp(player, drawings)
     local character = player.Character
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
     local humanoid = character and character:FindFirstChild("Humanoid")
@@ -87,7 +85,7 @@ local function updateEsp(player, drawings)
 
             drawings.box.Size = newVector2(width, height)
             drawings.box.Position = newVector2(x - width/2, y - height/2)
-            drawings.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
+            drawings.box.Color = teamcolor and player.TeamColor.Color or defaultcolor
 
             drawings.boxoutline.Size = drawings.box.Size
             drawings.boxoutline.Position = drawings.box.Position
@@ -98,12 +96,63 @@ local function updateEsp(player, drawings)
     end
 end
 
+--// Toggle function
+function ToggleESP(Value)
+    espEnabled = Value
+    if espEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createEsp(player)
+            end
+        end
+    else
+        destroyAllEsp()
+    end
+end
+
+--// GUI Elements
+BoxESPBox:AddToggle('espbox', {
+    Text = 'Enable Box ESP',
+    Default = false,
+    Tooltip = 'Toggles Box ESP visibility',
+    Callback = function(Value)
+        ToggleESP(Value)
+    end
+})
+
+BoxESPBox:AddToggle('teamcheck', {
+    Text = 'Team Check',
+    Default = false,
+    Tooltip = 'Hide teammates ESP',
+    Callback = function(Value)
+        teamcheck = Value
+    end
+})
+
+BoxESPBox:AddToggle('teamcolor', {
+    Text = 'Use Team Colors',
+    Default = true,
+    Tooltip = 'Changes ESP color to player team color',
+    Callback = function(Value)
+        teamcolor = Value
+    end
+})
+
+BoxESPBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
+    Default = defaultcolor,
+    Title = 'Pick a color',
+    Transparency = 0,
+    Callback = function(Value)
+        defaultcolor = Value
+    end
+})
+
 --// Main loop
 RunService:BindToRenderStep("BoxESPUpdate", Enum.RenderPriority.Camera.Value, function()
     if not espEnabled then return end
     for player, drawings in pairs(espCache) do
         if player.Parent and player ~= LocalPlayer then
-            if settings.teamcheck and player.Team == LocalPlayer.Team then 
+            if teamcheck and player.Team == LocalPlayer.Team then 
                 drawings.box.Visible = false
                 drawings.boxoutline.Visible = false
                 continue 
@@ -123,54 +172,3 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     removeEsp(player)
 end)
-
---// Toggle function
-local function ToggleESP(Value)
-    espEnabled = Value
-    if espEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                createEsp(player)
-            end
-        end
-    else
-        destroyAllEsp()
-    end
-end
-
---// GUI Elements (Add these to your LeftGroupBox or wherever)
-LeftGroupBox:AddToggle('espbox', {
-    Text = 'Enable Box ESP',
-    Default = false,
-    Tooltip = 'Toggles Box ESP visibility',
-    Callback = function(Value)
-        ToggleESP(Value)
-    end
-})
-
-LeftGroupBox:AddToggle('teamcheck', {
-    Text = 'Team Check',
-    Default = false,
-    Tooltip = 'Hide teammates ESP',
-    Callback = function(Value)
-        settings.teamcheck = Value
-    end
-})
-
-LeftGroupBox:AddToggle('teamcolor', {
-    Text = 'Use Team Colors',
-    Default = true,
-    Tooltip = 'Changes ESP color to player team color',
-    Callback = function(Value)
-        settings.teamcolor = Value
-    end
-})
-
-LeftGroupBox:AddLabel('ESP Color'):AddColorPicker('espcolor', {
-    Default = settings.defaultcolor,
-    Title = 'Pick a color',
-    Transparency = 0,
-    Callback = function(Value)
-        settings.defaultcolor = Value
-    end
-})
