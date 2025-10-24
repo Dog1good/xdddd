@@ -1,0 +1,181 @@
+LeftGroupBox = Tabs.Visuals:AddLeftGroupbox('Tracers')
+
+-- Optimized Tracer Script with Toggling, Mouse Follow, and Object Pooling
+
+-- Services
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+Debris = game:GetService("Debris")
+
+player = Players.LocalPlayer
+camera = workspace.CurrentCamera
+mouse = player:GetMouse()
+
+-- Settings for Tracers
+Settings = {
+    Tracer_Color = Color3.fromRGB(0, 0, 255),
+    Tracer_Thickness = 1,
+    Tracer_Origin = "Bottom",
+    Tracer_FollowMouse = false
+}
+
+-- Global toggle variables
+_G.TracersEnabled = false
+_G.TracersFollowMouse = false
+
+-- Tracer pool to reuse tracers
+tracerPool = {}
+
+-- Function to get or create a new tracer line
+function GetTracer()
+    local tracer = table.remove(tracerPool) -- Reuse if available
+    if not tracer then
+        tracer = Drawing.new("Line")
+        tracer.Visible = false
+        tracer.Color = Settings.Tracer_Color
+        tracer.Thickness = Settings.Tracer_Thickness
+        tracer.Transparency = 1
+    end
+    return tracer
+end
+
+-- Function to return tracers to the pool
+function ReturnTracer(tracer)
+    tracer.Visible = false
+    table.insert(tracerPool, tracer)
+end
+
+-- Function to determine tracer origin point
+function GetTracerOrigin()
+    local viewportSize = camera.ViewportSize
+    if _G.TracersFollowMouse then
+        return Vector2.new(mouse.X, mouse.Y + 60)
+    end
+    if Settings.Tracer_Origin == "Middle" then
+        return viewportSize * 0.5
+    elseif Settings.Tracer_Origin == "Bottom" then
+        return Vector2.new(viewportSize.X * 0.5, viewportSize.Y)
+    elseif Settings.Tracer_Origin == "Top" then
+        return Vector2.new(viewportSize.X * 0.5, 0)
+    elseif Settings.Tracer_Origin == "Left" then
+        return Vector2.new(0, viewportSize.Y * 0.5)
+    elseif Settings.Tracer_Origin == "Right" then
+        return Vector2.new(viewportSize.X, viewportSize.Y * 0.5)
+    end
+    return viewportSize * 0.5
+end
+
+-- Table to store active tracers
+activeTracers = {}
+
+-- Function to update tracers
+function UpdateTracers()
+    if not _G.TracersEnabled then
+        for plr, tracer in pairs(activeTracers) do
+            ReturnTracer(tracer)
+            activeTracers[plr] = nil
+        end
+        return
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            if not activeTracers[plr] then
+                activeTracers[plr] = GetTracer()
+            end
+
+            local tracer = activeTracers[plr]
+            local char = plr.Character
+            if char then
+                local rootPart = char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char:FindFirstChild("Humanoid")
+
+                if rootPart and humanoid and humanoid.Health > 0 then
+                    local screenPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
+                    if onScreen then
+                        tracer.From = GetTracerOrigin()
+                        tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+                        tracer.Visible = true
+                    else
+                        tracer.Visible = false
+                    end
+                else
+                    ReturnTracer(tracer)
+                    activeTracers[plr] = nil
+                end
+            end
+        end
+    end
+end
+
+-- Function to handle new players
+function OnPlayerAdded(plr)
+    if _G.TracersEnabled then
+        activeTracers[plr] = GetTracer()
+    end
+end
+
+-- Function to handle player removal
+function OnPlayerRemoving(plr)
+    local tracer = activeTracers[plr]
+    if tracer then
+        ReturnTracer(tracer)
+        activeTracers[plr] = nil
+    end
+end
+
+-- Event connections
+Players.PlayerAdded:Connect(OnPlayerAdded)
+Players.PlayerRemoving:Connect(OnPlayerRemoving)
+
+-- RunService loop for updating tracers
+tracerConnection = nil
+function ToggleTracers(enabled)
+    _G.TracersEnabled = enabled
+
+    if enabled then
+        tracerConnection = RunService.RenderStepped:Connect(UpdateTracers)
+    else
+        if tracerConnection then
+            tracerConnection:Disconnect()
+            tracerConnection = nil
+        end
+        -- Cleanup all tracers
+        for plr, tracer in pairs(activeTracers) do
+            ReturnTracer(tracer)
+            activeTracers[plr] = nil
+        end
+    end
+end
+
+-- UI Elements
+LeftGroupBox:AddToggle('TracersToggle', {
+    Text = 'Enable Tracers',
+    Default = false,
+    Tooltip = 'Toggle to enable or disable tracers',
+    Callback = ToggleTracers
+})
+
+LeftGroupBox:AddToggle('MouseFollowToggle', {
+    Text = 'Enable Mouse Follow for Tracers',
+    Default = false,
+    Tooltip = 'Toggle to enable or disable tracers following the mouse',
+    Callback = function(Value)
+        _G.TracersFollowMouse = Value
+    end
+})
+
+LeftGroupBox:AddDropdown('TracerPositionDropdown', {
+    Values = { 'Bottom', 'Top', 'Left', 'Right' },
+    Default = 1,
+    Multi = false,
+    Text = 'Tracer Position',
+    Tooltip = 'Select the starting position of the tracers',
+    Callback = function(Value)
+        Settings.Tracer_Origin = Value
+    end
+})
+
+Options.TracerPositionDropdown:OnChanged(function()
+    print('Tracer position changed. New value:', Options.TracerPositionDropdown.Value)
+end)
