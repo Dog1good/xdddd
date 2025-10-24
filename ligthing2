@@ -1,4 +1,4 @@
-    RightGroupBox = Tabs.Visuals:AddRightGroupbox('Fullbright')
+
 
     RightGroupBox:AddToggle('MyToggle', {
         Text = 'Fullbright',
